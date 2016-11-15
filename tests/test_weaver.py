@@ -59,7 +59,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         self.assertEqual([1, 2, 3, 3], self.environment)
 
     def test_remove_random_step(self):
-        fm.fuzzi_moss_random.sample = Mock(side_effect=[[1]])
+        fm.pydysofu_random.sample = Mock(side_effect=[[1]])
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: remove_random_step
@@ -70,7 +70,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         self.assertEqual([1, 3], self.environment)
 
     def test_remove__random_step_twice(self):
-        fm.fuzzi_moss_random.sample = Mock(side_effect=[[1], [2]])
+        fm.pydysofu_random.sample = Mock(side_effect=[[1], [2]])
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: remove_random_step
@@ -82,7 +82,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         self.assertEqual([1, 3, 1, 2], self.environment)
 
     def test_replace_all_steps_with_pass_in_random_sequence(self):
-        fm.fuzzi_moss_random.sample = Mock(side_effect=[[0], [1], [2]])
+        fm.pydysofu_random.sample = Mock(side_effect=[[0], [1], [2]])
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing:
@@ -111,7 +111,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
             result.append(iterable[1])
             return result
 
-        fm.fuzzi_moss_random.shuffle = Mock(side_effect=mock_random_shuffle)
+        fm.pydysofu_random.shuffle = Mock(side_effect=mock_random_shuffle)
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: shuffle_steps
@@ -133,7 +133,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         self.assertEqual([2], self.environment)
 
     def test_choose_from(self):
-        fm.fuzzi_moss_random.uniform = Mock(side_effect=[0.75, 0.75])
+        fm.pydysofu_random.uniform = Mock(side_effect=[0.75, 0.75])
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: choose_from([(0.5, identity), (0.5, remove_last_step)])
