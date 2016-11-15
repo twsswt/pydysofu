@@ -14,7 +14,7 @@ import copy
 import inspect
 
 from .find_lambda import find_lambda_ast
-from .config import fuzzi_moss_random
+from .config import pydysofu_random
 
 
 # Logging management machinery for fuzzer invocations.
@@ -64,7 +64,7 @@ def choose_random_steps(n):
         if len(steps) <= n:
             return [(0, len(steps)-1)]
         else:
-            sample_indices = fuzzi_moss_random.sample(range(0, len(steps)-1), n)
+            sample_indices = pydysofu_random.sample(range(0, len(steps) - 1), n)
             return [(i, i+1) for i in sample_indices]
 
     return _choose_random_steps
@@ -192,7 +192,7 @@ def choose_from(distribution=(1.0, lambda x: x)):
     def _choose_from(steps):
         total_weight = sum(map(lambda t: t[0], distribution))
 
-        p = fuzzi_moss_random.uniform(0.0, total_weight)
+        p = pydysofu_random.uniform(0.0, total_weight)
 
         up_to = 0.0
         for weight, fuzzer in distribution:
@@ -340,12 +340,43 @@ def replace_for_iterator_with(replacement=()):
 
 
 @log_invocation
-def _replace_step_with_pass(step):
-    return ast.Pass(lineno=step.lineno, col_offset=step.lineno)
+def replace_steps(start=0, end=None, replacement='pass'):
+    """
+    """
+    def _replace_steps(steps):
+
+        finish = len(steps) if end is None else end
+
+        if type(replacement) is str:
+            parsed_ast = ast.parse(replacement)
+            steps[start:finish] = parsed_ast.body
+
+        elif type(replacement) is ast.Pass:
+            steps[start:finish] = [replacement]
+
+        return steps
+
+    return _replace_steps
 
 
-def replace_steps_with_passes(steps):
-    return [_replace_step_with_pass(step) for step in steps]
+@log_invocation
+def insert_steps(position, insert):
+    """
+    Inserts one or more lines of code into a target set of steps.
+    :param position: The index into the target block of code to insert the lines.
+    :param insert: The inserted lines of code are represented as a single string.  Lines of code should be separated by
+     a \n carriage return.
+    """
+    def _insert_steps(steps):
+        fuzzer = replace_steps(position, position, insert)
+        return fuzzer(steps)
+
+    return _insert_steps
+
+
+def replace_steps_with_pass(steps):
+    fuzzer = replace_steps(replacement=ast.Pass(lineno=steps[0].lineno, col_offset=steps[0].lineno))
+    return fuzzer(steps)
 
 
 @log_invocation
@@ -355,7 +386,7 @@ def duplicate_steps(steps):
 
 @log_invocation
 def shuffle_steps(steps):
-    return fuzzi_moss_random.shuffle(steps)
+    return pydysofu_random.shuffle(steps)
 
 
 @log_invocation
@@ -369,29 +400,11 @@ def swap_if_blocks(steps):
     return steps
 
 
-@log_invocation
-def insert_steps(position, insert):
-    """
-    Inserts one or more lines of code into a target set of steps.
-    :param position: The index into the target block of code to insert the lines.
-    :param insert: The inserted lines of code are represented as a single string.  Lines of code should be separated by
-     a \n carriage return.
-    """
-    def _insert_steps(steps):
-        if type(insert) is str:
-            parsed_ast = ast.parse(insert)
-            steps[position:position] = parsed_ast.body
-
-        return steps
-
-    return _insert_steps
-
-
 # Utility fuzzers
 
 
 def remove_last_steps(n):
-    fuzzer = filter_steps(choose_last_steps(n), replace_steps_with_passes)
+    fuzzer = filter_steps(choose_last_steps(n), replace_steps_with_pass)
     return fuzzer
 
 
@@ -401,7 +414,7 @@ def remove_last_step(steps):
 
 
 def remove_random_step(steps):
-    fuzzer = filter_steps(choose_random_steps(1), replace_steps_with_passes)
+    fuzzer = filter_steps(choose_random_steps(1), replace_steps_with_pass)
     return fuzzer(steps)
 
 
