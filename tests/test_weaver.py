@@ -282,6 +282,17 @@ class FuzziMossWeaverTest(unittest.TestCase):
         result = self.target.example_class_method()
         self.assertEquals(None, result)
 
+    def test_insert_code(self):
+
+        test_advice = {
+            ExampleWorkflow.method_for_fuzzing: insert_steps(0, 'self.environment.append(4)')
+        }
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
+
+        self.target.method_for_fuzzing()
+
+        self.assertEquals(self.environment, [4, 1, 2, 3])
+
 
 if __name__ == '__main__':
     unittest.main()
