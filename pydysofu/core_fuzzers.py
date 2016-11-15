@@ -133,6 +133,8 @@ def invert(fuzz_filter):
 
         if not start == len(steps):
             inverted.append((start, len(steps)))
+        if inverted[0] == (0, 0):
+            inverted.pop(0)
 
         return inverted
 
@@ -340,8 +342,10 @@ def replace_for_iterator_with(replacement=()):
 
 
 @log_invocation
-def replace_steps(start=0, end=None, replacement='pass'):
+def replace_steps_with(start=0, end=None, replacement='pass'):
     """
+    Replaces one or more lines of code with the specified replacement.  The portion of the code block to be replaced is
+    given by the start and end index.
     """
     def _replace_steps(steps):
 
@@ -368,14 +372,14 @@ def insert_steps(position, insert):
      a \n carriage return.
     """
     def _insert_steps(steps):
-        fuzzer = replace_steps(position, position, insert)
+        fuzzer = replace_steps_with(position, position, insert)
         return fuzzer(steps)
 
     return _insert_steps
 
 
 def replace_steps_with_pass(steps):
-    fuzzer = replace_steps(replacement=ast.Pass(lineno=steps[0].lineno, col_offset=steps[0].lineno))
+    fuzzer = replace_steps_with(replacement=ast.Pass(lineno=steps[0].lineno, col_offset=steps[0].lineno))
     return fuzzer(steps)
 
 
