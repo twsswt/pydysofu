@@ -253,7 +253,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing_that_returns_4:
-                filter_steps(invert(choose_last_step), replace_steps_with_passes)
+                filter_steps(invert(choose_last_step), replace_steps_with_pass)
         }
         fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
@@ -264,7 +264,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
     def test_mangled_function_invert_invert_filter(self):
         test_advice = {
             ExampleWorkflow.method_for_fuzzing_that_returns_4:
-                filter_steps(invert(invert(choose_last_step)), replace_steps_with_passes)
+                filter_steps(invert(invert(choose_last_step)), replace_steps_with_pass)
         }
         fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
