@@ -162,14 +162,14 @@ class ExampleWorkflow(object):
         for i in range(1, 3):
             self.environment.append(i)
 
-    @fm.fuzz(filter_steps(invert(choose_last_step), replace_steps_with_passes))
+    @fm.fuzz(filter_steps(invert(choose_last_step), replace_steps_with_pass))
     def mangled_function_invert_filter(self):
         self.environment.append(1)
         self.environment.append(2)
         self.environment.append(3)
         return 4
 
-    @fm.fuzz(filter_steps(invert(invert(choose_last_step)), replace_steps_with_passes))
+    @fm.fuzz(filter_steps(invert(invert(choose_last_step)), replace_steps_with_pass))
     def mangled_function_invert_invert_filter(self):
         self.environment.append(1)
         self.environment.append(2)
@@ -201,20 +201,20 @@ class FuzziMossDecoratorTest(unittest.TestCase):
         self.assertEqual([1, 2, 3, 3], self.environment)
 
     def test_remove__random_step(self):
-        fm.fuzzi_moss_random.sample = Mock(side_effect=[[1]])
+        fm.pydysofu_random.sample = Mock(side_effect=[[1]])
 
         self.target.mangled_function_remove_random_step()
         self.assertEqual([1, 3], self.environment)
 
     def test_remove__random_step_twice(self):
-        fm.fuzzi_moss_random.sample = Mock(side_effect=[[1], [2]])
+        fm.pydysofu_random.sample = Mock(side_effect=[[1], [2]])
 
         self.target.mangled_function_remove_random_step()
         self.target.mangled_function_remove_random_step()
         self.assertEqual([1, 3, 1, 2], self.environment)
 
     def test_replace_all_steps_with_pass_in_random_sequence(self):
-        fm.fuzzi_moss_random.sample = Mock(side_effect=[[0], [1], [2]])
+        fm.pydysofu_random.sample = Mock(side_effect=[[0], [1], [2]])
 
         self.target.mangled_function_replace_all_steps_with_pass_in_random_sequence()
         self.assertEqual([], self.environment)
@@ -231,7 +231,7 @@ class FuzziMossDecoratorTest(unittest.TestCase):
             result.append(iterable[1])
             return result
 
-        fm.fuzzi_moss_random.shuffle = Mock(side_effect=mock_random_shuffle)
+        fm.pydysofu_random.shuffle = Mock(side_effect=mock_random_shuffle)
 
         self.target.mangled_function_shuffle_steps()
         self.assertEqual([3, 1, 2], self.environment)
@@ -241,7 +241,7 @@ class FuzziMossDecoratorTest(unittest.TestCase):
         self.assertEqual([2], self.environment)
 
     def test_choose_from(self):
-        fm.fuzzi_moss_random.uniform = Mock(side_effect=[0.75, 0.75])
+        fm.pydysofu_random.uniform = Mock(side_effect=[0.75, 0.75])
 
         self.target.mangled_function_choose_from()
         self.target.mangled_function_choose_from()
