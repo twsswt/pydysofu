@@ -30,7 +30,8 @@ class WorkflowTransformer(ast.NodeTransformer):
         if self.strip_decorators:
             node.decorator_list = []
 
-        node.body = self.fuzzer(node.body)
+        #Perform visit before applying mutation, to avoid recursive mutations.
+        result = self.generic_visit(node)
 
-        # Now that we've mutated, visit the rest of the tree we're given.
-        return self.generic_visit(node)
+        node.body = self.fuzzer(node.body)
+        return result
