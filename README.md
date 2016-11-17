@@ -40,7 +40,9 @@ The core library includes both atomic and composite fuzzers for building more co
   * Excluding control structures
   * Inverting a selection
 * Removing steps
+* Replacing steps
 * Duplicating steps
+* Inserting extra steps
 * Shuffling steps
 * Applying a sequence of fuzz operators
 * Choosing a random fuzz operator to apply from a probability distribution.
@@ -50,7 +52,7 @@ The core library includes both atomic and composite fuzzers for building more co
 * Recursing into composite steps
 * Swapping if blocks
 
-A number of demonstrator fuzzers are also provided:
+A number of demonstrator fuzzers are also provided that combine the core fuzzers described above:
 
 * Remove last step(s)
 * Duplicate last step
@@ -94,7 +96,10 @@ Now we can use the fuzzed class as normal.
     workflow.activity()
     print workflow.environment
 
-Output:
+Output (for example):
+
+    [2, 3]
+    [1, 3]
 
 Note that the fuzzer will be re-applied each time the fuzzed function is called meaning that in this case a different
 step can be removed from the workflow on each invocation.
