@@ -276,18 +276,30 @@ def replace_condition_with(condition=False):
 
         elif hasattr(condition, '__call__'):
 
-            if condition.func_name == '<lambda>':
+            if hasattr(condition, 'func_name'):
 
-                containing_string = inspect.getsource(condition).strip()
-                func_ast = find_lambda_ast(containing_string, condition).value
+                if condition.func_name == '<lambda>':
+
+                    containing_string = inspect.getsource(condition).strip()
+                    func_ast = find_lambda_ast(containing_string, condition).value
+
+                else:
+                    func_ast = ast.Name(
+                        id=condition.func_name,
+                        lineno=step.lineno,
+                        col_offset=step.col_offset,
+                        ctx=ast.Load()
+                    )
 
             else:
+                # TODO Call an object.
                 func_ast = ast.Name(
-                    id=condition.func_name,
+                    id='call',
                     lineno=step.lineno,
                     col_offset=step.col_offset,
                     ctx=ast.Load()
                 )
+
             return ast.Call(func=func_ast, col_offset=step.col_offset, lineno=step.lineno, args=list(), keywords=list())
 
         elif type(condition) is bool:
@@ -299,12 +311,19 @@ def replace_condition_with(condition=False):
             )
 
     def _replace_condition(steps):
+
         for step in steps:
             if type(step) is If or type(step) is While:
                 step.test = build_replacement(step)
         return steps
 
-    return _replace_condition
+    if hasattr(condition, '__call__') and hasattr(condition, 'func_name') and condition.func_name != '<lambda>':
+        return in_sequence([
+            insert_steps(0, "from %s import %s" % (condition.__module__, condition.func_name)),
+            _replace_condition,
+        ])
+    else:
+        return _replace_condition
 
 
 @log_invocation
