@@ -94,7 +94,7 @@ def choose_last_step(steps):
     return func(steps)
 
 
-_ast_control_structure_types = {ast.For, ast.If, ast.TryExcept, ast.While, ast.Return}
+_ast_control_structure_types = {ast.For, ast.If, ast.TryExcept, ast.While, ast.Return, ast.FunctionDef}
 
 
 def exclude_control_structures(target=_ast_control_structure_types):
@@ -103,7 +103,7 @@ def exclude_control_structures(target=_ast_control_structure_types):
         start = 0
         while start < len(steps) and type(steps[start]) in _ast_control_structure_types & target:
             start += 1
-        end = start + 1
+        end = start
         while end < len(steps):
             while end < len(steps) and type(steps[end]) not in _ast_control_structure_types & target:
                 end += 1
@@ -114,6 +114,24 @@ def exclude_control_structures(target=_ast_control_structure_types):
         return result
 
     return _exclude_control_structures
+
+
+def include_control_structures(target=_ast_control_structure_types):
+    def _include_control_structures(steps):
+        result = list()
+        start = 0
+        while start < len(steps) and type(steps[start]) not in _ast_control_structure_types & target:
+            start += 1
+        end = start
+        while end < len(steps):
+            while end < len(steps) and type(steps[end]) in _ast_control_structure_types & target:
+                end += 1
+            result.append((start, end))
+            start = end
+            end = start + 1
+        return result
+
+    return _include_control_structures
 
 
 def invert(fuzz_filter):
@@ -227,24 +245,31 @@ def on_condition_that(condition, fuzzer):
     return _on_condition_that
 
 
-def recurse_into_nested_steps(fuzzer=identity, target_structures={ast.For, ast.TryExcept, ast.While, ast.If}):
+def recurse_into_nested_steps(
+        fuzzer=identity, target_structures={ast.For, ast.TryExcept, ast.While, ast.If},
+        min_depth = 0,
+        max_depth = 2 ** 32):
     """
     A composite fuzzer that applies the supplied fuzzer recursively to bodies of control statements (For, While,
     TryExcept and If).  Recursion is applied at the head, i.e. the fuzzer supplied is applied to the parent block last.
     """
 
-    def _recurse_into_nested_steps(steps):
-        for step in steps:
-            if type(step) in {ast.For, ast.While} & target_structures:
-                step.body = _recurse_into_nested_steps(step.body)
-            elif type(step) in {ast.If} & target_structures:
-                step.body = _recurse_into_nested_steps(step.body)
-                step.orelse = _recurse_into_nested_steps(step.orelse)
-            elif type(step) in {ast.TryExcept} & target_structures:
-                step.body = _recurse_into_nested_steps(step.body)
-                for handler in step.handlers:
-                    _recurse_into_nested_steps(handler.body)
-        return fuzzer(steps)
+    def _recurse_into_nested_steps(steps, depth=0):
+        if depth <= max_depth:
+            for step in steps:
+                if type(step) in {ast.For, ast.While} & target_structures:
+                    step.body = _recurse_into_nested_steps(step.body, depth + 1)
+                elif type(step) in {ast.If} & target_structures:
+                    step.body = _recurse_into_nested_steps(step.body, depth + 1)
+                    step.orelse = _recurse_into_nested_steps(step.orelse, depth + 1)
+                elif type(step) in {ast.TryExcept} & target_structures:
+                    step.body = _recurse_into_nested_steps(step.body, depth + 1)
+                    for handler in step.handlers:
+                        _recurse_into_nested_steps(handler.body, depth + 1)
+        if depth >= min_depth:
+            return fuzzer(steps)
+        else:
+            return steps
 
     return _recurse_into_nested_steps
 
