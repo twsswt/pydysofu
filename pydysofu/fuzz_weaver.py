@@ -43,13 +43,38 @@ def fuzz_function(reference_function, fuzzer=identity):
     reference_function.func_code = compiled_module.co_consts[0]
 
 
+def _retrieve_fuzzer(advice_key, advice_dict, target_object):
+    """
+    Obtains a fuzzer from the specified dictionary, using the provided key.
+    """
+
+    advice = advice_dict.get(advice_key, identity)
+
+    if type(advice) is dict:
+        for object_filter, fuzzer in advice.items():
+            if object_filter(target_object):
+                return fuzzer
+
+        return identity
+    else:
+        return advice
+
+
 def fuzz_clazz(clazz, advice):
 
     """
-    Applies fuzzers specified in the supplied advice dictionary to methods in supplied class.
+    Applies fuzzers specified in the supplied advice dictionary to methods in the supplied class.
+
+    Fuzzing is applied dynamically at runtime by intercepting invocations of __getattribute__ on target objects.
+    The method requested by the __getattribute__ call is fuzzed using the fuzzer specified in the supplied advice
+    dictionary (which maps method references to fuzzers)before returning it to the requester. If no fuzzer is specified
+    for a function then the identity fuzzer is applied in case the method has been previously fuzzed.
+
+    A fuzzer value may itself be a dictionary of object filter->fuzzer mappings.  In this case, the dictionary is
+    searched for a filter that matches the target (self) object specified in the __getattribute__ call.
+
     :param clazz : the class to fuzz.
-    :param advice : the dictionary of method->fuzzer mappings to apply.  If no fuzzer is specified for a function then
-    the identity fuzzer is applied in case the method has been previously fuzzed.
+    :param advice : the dictionary of method reference->fuzzer mappings to apply for the class.
     """
     def __fuzzed_getattribute__(self, item):
         attribute = object.__getattribute__(self, item)
@@ -61,15 +86,18 @@ def fuzz_clazz(clazz, advice):
 
             def wrap(*args, **kwargs):
 
-                reference_method = attribute.im_func
+                reference_function = attribute.im_func
                 # Ensure that advice key is unbound method for instance methods.
                 advice_key = getattr(attribute.im_class, attribute.func_name)
-                fuzzer = advice.get(advice_key, identity)
-                fuzz_function(reference_method, fuzzer)
+                fuzzer = _retrieve_fuzzer(advice_key, advice, self)
+
+                fuzz_function(reference_function, fuzzer)
 
                 # Execute the mutated method.
-                return reference_method(self, *args, **kwargs)
+                return reference_function(self, *args, **kwargs)
+
             wrap.func_name = attribute.func_name
+
             return wrap
 
         elif inspect.isfunction(attribute):
@@ -77,13 +105,16 @@ def fuzz_clazz(clazz, advice):
             def wrap(*args, **kwargs):
 
                 reference_function = attribute
-                fuzzer = advice.get(reference_function, identity)
+                advice_key = reference_function
+                fuzzer = _retrieve_fuzzer(advice_key, advice, self)
+
                 fuzz_function(reference_function, fuzzer)
 
                 # Execute the mutated function.
                 return reference_function(*args, **kwargs)
 
             return wrap
+
         else:
             return attribute
 

@@ -247,8 +247,8 @@ def on_condition_that(condition, fuzzer):
 
 def recurse_into_nested_steps(
         fuzzer=identity, target_structures={ast.For, ast.TryExcept, ast.While, ast.If},
-        min_depth = 0,
-        max_depth = 2 ** 32):
+        min_depth=0,
+        max_depth=2 ** 32):
     """
     A composite fuzzer that applies the supplied fuzzer recursively to bodies of control statements (For, While,
     TryExcept and If).  Recursion is applied at the head, i.e. the fuzzer supplied is applied to the parent block last.
@@ -317,7 +317,7 @@ def replace_condition_with(condition=False):
                     )
 
             else:
-                # TODO Call an object.
+                # TODO be able to call an object.
                 func_ast = ast.Name(
                     id='call',
                     lineno=step.lineno,
@@ -343,10 +343,12 @@ def replace_condition_with(condition=False):
         return steps
 
     if hasattr(condition, '__call__') and hasattr(condition, 'func_name') and condition.func_name != '<lambda>':
+
         return in_sequence([
             insert_steps(0, "from %s import %s" % (condition.__module__, condition.func_name)),
             _replace_condition,
         ])
+
     else:
         return _replace_condition
 

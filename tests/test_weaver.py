@@ -293,6 +293,24 @@ class FuzziMossWeaverTest(unittest.TestCase):
 
         self.assertEquals(self.environment, [4, 1, 2, 3])
 
+    def test_fuzz_specific_object(self):
+
+        test_advice = {
+            ExampleWorkflow.method_for_fuzzing:
+                {lambda o: hasattr(o, 'name') and o.name == 'a workflow': remove_last_step}
+        }
+
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
+
+        self.target.method_for_fuzzing()
+
+        self.assertEquals(self.environment, [1, 2, 3])
+
+        self.target.name = 'a workflow'
+        self.target.method_for_fuzzing()
+
+        self.assertEquals(self.environment, [1, 2, 3, 1, 2])
+
 
 if __name__ == '__main__':
     unittest.main()
