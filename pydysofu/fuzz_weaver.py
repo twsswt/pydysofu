@@ -61,7 +61,6 @@ def _retrieve_fuzzer(advice_key, advice_dict, target_object):
 
 
 def fuzz_clazz(clazz, advice):
-
     """
     Applies fuzzers specified in the supplied advice dictionary to methods in the supplied class.
 
