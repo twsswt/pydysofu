@@ -7,7 +7,7 @@ import ast
 
 class WorkflowTransformer(ast.NodeTransformer):
 
-    def __init__(self, fuzzer=lambda x: x, strip_decorators=True):
+    def __init__(self, fuzzer=lambda x: x, strip_decorators=True, context=None):
         """
         :param fuzzer: a function that takes a list of strings (lines of program code) and returns another
         list of lines.
@@ -17,6 +17,8 @@ class WorkflowTransformer(ast.NodeTransformer):
 
         self.strip_decorators = strip_decorators
         self.fuzzer = fuzzer
+
+        self.context = context
 
     # noinspection PyPep8Naming
     def visit_FunctionDef(self, node):
@@ -33,5 +35,6 @@ class WorkflowTransformer(ast.NodeTransformer):
         # Perform visit before applying mutation, to avoid recursive mutations.
         result = self.generic_visit(node)
 
-        node.body = self.fuzzer(node.body)
+        node.body = self.fuzzer(node.body, self.context)
+
         return result

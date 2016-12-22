@@ -30,16 +30,17 @@ def get_reference_syntax_tree(func):
     return _reference_syntax_trees[func]
 
 
-def fuzz_function(reference_function, fuzzer=identity):
+def fuzz_function(reference_function, fuzzer=identity, context=None):
     reference_syntax_tree = get_reference_syntax_tree(reference_function)
 
     fuzzed_syntax_tree = copy.deepcopy(reference_syntax_tree)
-    workflow_transformer = WorkflowTransformer(fuzzer)
+    workflow_transformer = WorkflowTransformer(fuzzer=fuzzer, context=context)
     workflow_transformer.visit(fuzzed_syntax_tree)
 
     # Compile the newly mutated function into a module, extract the mutated function code object and replace the
     # reference function's code object for this call.
     compiled_module = compile(fuzzed_syntax_tree, inspect.getsourcefile(reference_function), 'exec')
+
     reference_function.func_code = compiled_module.co_consts[0]
 
 
@@ -90,7 +91,7 @@ def fuzz_clazz(clazz, advice):
                 advice_key = getattr(attribute.im_class, attribute.func_name)
                 fuzzer = _retrieve_fuzzer(advice_key, advice, self)
 
-                fuzz_function(reference_function, fuzzer)
+                fuzz_function(reference_function, fuzzer, self)
 
                 # Execute the mutated method.
                 return reference_function(self, *args, **kwargs)
