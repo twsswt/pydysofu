@@ -44,23 +44,6 @@ def fuzz_function(reference_function, fuzzer=identity, context=None):
     reference_function.func_code = compiled_module.co_consts[0]
 
 
-def _retrieve_fuzzer(advice_key, advice_dict, target_object):
-    """
-    Obtains a fuzzer from the specified dictionary, using the provided key.
-    """
-
-    advice = advice_dict.get(advice_key, identity)
-
-    if type(advice) is dict:
-        for object_filter, fuzzer in advice.items():
-            if object_filter(target_object):
-                return fuzzer
-
-        return identity
-    else:
-        return advice
-
-
 def fuzz_clazz(clazz, advice):
     """
     Applies fuzzers specified in the supplied advice dictionary to methods in the supplied class.
@@ -89,7 +72,7 @@ def fuzz_clazz(clazz, advice):
                 reference_function = attribute.im_func
                 # Ensure that advice key is unbound method for instance methods.
                 advice_key = getattr(attribute.im_class, attribute.func_name)
-                fuzzer = _retrieve_fuzzer(advice_key, advice, self)
+                fuzzer = advice.get(advice_key, identity)
 
                 fuzz_function(reference_function, fuzzer, self)
 
@@ -106,7 +89,7 @@ def fuzz_clazz(clazz, advice):
 
                 reference_function = attribute
                 advice_key = reference_function
-                fuzzer = _retrieve_fuzzer(advice_key, advice, self)
+                fuzzer = advice.get(advice_key, identity)
 
                 fuzz_function(reference_function, fuzzer)
 

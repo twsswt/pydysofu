@@ -307,7 +307,9 @@ class FuzziMossWeaverTest(unittest.TestCase):
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing:
-                {lambda o: hasattr(o, 'name') and o.name == 'a workflow': remove_last_step}
+                filter_context(
+                    lambda context: hasattr(context, 'name') and context.name == 'a workflow',
+                    remove_last_step)
         }
 
         fm.fuzz_clazz(ExampleWorkflow, test_advice)

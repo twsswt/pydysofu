@@ -163,6 +163,18 @@ def invert(fuzz_filter):
 # Composite Fuzzers
 
 
+def filter_context(fuzz_filter=lambda context: True, fuzzer=identity):
+
+    def _filter_context(steps, context):
+
+        if fuzz_filter(context):
+            return fuzzer(steps, context)
+        else:
+            return steps
+
+    return _filter_context
+
+
 def filter_steps(fuzz_filter=choose_identity, fuzzer=identity):
     """
     A composite fuzzer that applies the supplied fuzzer to a list of steps produced by applying the specified filter
