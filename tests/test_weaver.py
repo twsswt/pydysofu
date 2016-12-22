@@ -249,6 +249,16 @@ class FuzziMossWeaverTest(unittest.TestCase):
         self.target.method_containing_if_followed_by_for()
         self.assertEquals([1, 2], self.environment)
 
+    def test_mangled_function_including_control_structures(self):
+        test_advice = {
+            ExampleWorkflow.method_containing_if_followed_by_for:
+                filter_steps(include_control_structures({ast.For}), remove_last_step)
+        }
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
+
+        self.target.method_containing_if_followed_by_for()
+        self.assertEquals([1], self.environment)
+
     def test_mangled_function_invert_filter(self):
 
         test_advice = {

@@ -118,7 +118,7 @@ def exclude_control_structures(target=_ast_control_structure_types):
 
 
 def include_control_structures(target=_ast_control_structure_types):
-    def _include_control_structures(steps, context):
+    def _include_control_structures(steps):
         result = list()
         start = 0
         while start < len(steps) and type(steps[start]) not in _ast_control_structure_types & target:
