@@ -1,5 +1,9 @@
 """
 Provides a library of standard fuzz operators for work flows that can be assembled into domain specific fuzz operators.
+
+All fuzz operators are of the form fuzzer(steps, context). Steps is the sequence of steps of a method or function
+that may be altered by the fuzzer. The context is the method's bound object, or None if an unbound function is fuzzed.
+
 @author probablytom
 @author twsswt
 """
@@ -163,14 +167,19 @@ def invert(fuzz_filter):
 # Composite Fuzzers
 
 
-def filter_context(fuzz_filter=lambda context: True, fuzzer=identity):
-
+def filter_context(fuzz_filters=[(lambda context: True, identity)]):
+    """
+    A composite fuzzer that accepts a sequence of context filter, fuzz operator tuples.  Each context filter must be a
+    function that accepts a context and return a boolean value if the filter is satisfied by the context.  The
+    associated fuzz operator is applied when the context filter returns True.
+    """
     def _filter_context(steps, context):
 
-        if fuzz_filter(context):
-            return fuzzer(steps, context)
-        else:
-            return steps
+        for fuzz_filter, fuzzer in fuzz_filters:
+            if fuzz_filter(context):
+                steps = fuzzer(steps, context)
+
+        return steps
 
     return _filter_context
 

@@ -8,8 +8,6 @@ from pydysofu.core_fuzzers import *
 
 from example_workflow import ExampleWorkflow
 
-from random import Random
-
 
 class FuzziMossWeaverTest(unittest.TestCase):
 
@@ -308,8 +306,8 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_for_fuzzing:
                 filter_context(
-                    lambda context: hasattr(context, 'name') and context.name == 'a workflow',
-                    remove_last_step)
+                    [(lambda context: hasattr(context, 'name') and context.name == 'a workflow', remove_last_step)]
+                )
         }
 
         fm.fuzz_clazz(ExampleWorkflow, test_advice)

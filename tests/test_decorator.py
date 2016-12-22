@@ -10,8 +10,6 @@ from mock import Mock
 import pydysofu as fm
 from pydysofu.core_fuzzers import *
 
-from random import Random
-
 fm.fuzz.enable_fuzzings = True
 
 
