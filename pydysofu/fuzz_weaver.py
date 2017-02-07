@@ -16,6 +16,9 @@ from workflow_transformer import WorkflowTransformer
 _reference_syntax_trees = dict()
 
 
+_reference_get_attributes = dict()
+
+
 def get_reference_syntax_tree(func):
     if func not in _reference_syntax_trees:
         func_source_lines = inspect.getsourcelines(func)[0]
@@ -59,6 +62,10 @@ def fuzz_clazz(clazz, advice):
     :param clazz : the class to fuzz.
     :param advice : the dictionary of method reference->fuzzer mappings to apply for the class.
     """
+
+    if clazz not in _reference_get_attributes:
+        _reference_get_attributes[clazz] = clazz.__getattribute__
+
     def __fuzzed_getattribute__(self, item):
         attribute = object.__getattribute__(self, item)
 
@@ -102,6 +109,10 @@ def fuzz_clazz(clazz, advice):
             return attribute
 
     clazz.__getattribute__ = __fuzzed_getattribute__
+
+
+def defuzz_class(clazz):
+    clazz.__getattribute__ = _reference_get_attributes[clazz]
 
 
 def fuzz_module(mod, advice):
