@@ -28,6 +28,15 @@ specification of fuzzers, allowing many different fuzzings of the same program t
 Each fuzzing operator is a function that accepts the body of a work flow function (as a list of statements) and returns
 a fuzzed list of statements.
 
+## Applications
+
+PyDySoFu was originally developed as a fuzzing tool to simulate contingent behaviour in socio-technical systems.  However, there are a number of other possible applications:
+
+ * Simulating Byzantine disruption in distributed system testing.
+ * Simulations of complex behaviour in distributed systems.
+ * Fallible behaviour in human like computing.
+ * Modelling physical systems that are not amenable to stochastic analysis due to emergent complexity. 
+
 ## Available Fuzzers
 
 The core library includes both atomic and composite fuzzers for building more complex behaviours:
