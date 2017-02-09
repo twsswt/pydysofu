@@ -13,6 +13,8 @@ import ast
 import _ast
 from ast import If, While
 
+from threading import Lock
+
 import copy
 
 import inspect
@@ -23,12 +25,19 @@ from .config import pydysofu_random
 
 # Logging management machinery for fuzzer invocations.
 
+__fuzzer_invocations_lock = Lock()
+
 
 fuzzer_invocations = dict()
 
 
-def fuzzer_invocations_count():
-    return reduce(lambda i, j: i + j, fuzzer_invocations.values(), 0)
+def fuzzer_invocations_count(workflow=None):
+
+    filtered_values = \
+        filter(lambda t: t[0][0] == workflow, fuzzer_invocations.items()) if workflow is not None \
+        else fuzzer_invocations.items()
+
+    return sum(map(lambda t: t[1], filtered_values))
 
 
 def reset_invocation_counters():
@@ -38,7 +47,10 @@ def reset_invocation_counters():
 
 def log_invocation(func):
     def func_wrapper(*args, **kwargs):
-        fuzzer_invocations[func] = fuzzer_invocations.get(func, 0) + 1
+        __fuzzer_invocations_lock.acquire()
+        key = (args[1].__class__, func)
+        fuzzer_invocations[key] = fuzzer_invocations.get(key, 0) + 1
+        __fuzzer_invocations_lock.release()
         return func(*args, **kwargs)
     return func_wrapper
 
@@ -48,9 +60,7 @@ def log_invocation(func):
 
 def identity(steps, context):
     """
-    The identity fuzzer.
-    :param steps:
-    :return:
+    The identity fuzzer, which returns the provided steps.
     """
     return steps
 
@@ -418,12 +428,12 @@ def replace_for_iterator_with(replacement=()):
     return _replace_iterator_with
 
 
-@log_invocation
 def replace_steps_with(start=0, end=None, replacement='pass'):
     """
     Replaces one or more lines of code with the specified replacement.  The portion of the code block to be replaced is
     given by the start and end index.
     """
+    @log_invocation
     def _replace_steps(steps, context):
 
         finish = len(steps) if end is None else end
