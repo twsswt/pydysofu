@@ -318,7 +318,6 @@ def recurse_into_nested_steps(
 # Atomic Fuzzers.
 
 
-@log_invocation
 def replace_condition_with(condition=False):
     """
     An atomic fuzzer that replaces conditions with the supplied condition.
@@ -376,6 +375,7 @@ def replace_condition_with(condition=False):
                 ctx=ast.Load()
             )
 
+    @log_invocation
     def _replace_condition(steps, context):
 
         for step in steps:
@@ -394,13 +394,13 @@ def replace_condition_with(condition=False):
         return _replace_condition
 
 
-@log_invocation
 def replace_for_iterator_with(replacement=()):
     """
     An atomic fuzzer that replaces iterable expressions with the supplied iterable.  The function currently only
     supports lists of numbers and string literals.
     """
 
+    @log_invocation
     def _replace_iterator_with(steps, context):
         for step in steps:
             if type(step) is ast.For:

@@ -112,7 +112,13 @@ def fuzz_clazz(clazz, advice):
 
 
 def defuzz_class(clazz):
-    clazz.__getattribute__ = _reference_get_attributes[clazz]
+    if clazz in _reference_get_attributes:
+        clazz.__getattribute__ = _reference_get_attributes[clazz]
+
+
+def defuzz_all_classes():
+    for clazz in _reference_get_attributes.keys():
+        defuzz_class(clazz)
 
 
 def fuzz_module(mod, advice):
