@@ -84,7 +84,10 @@ def fuzz_clazz(clazz, advice):
                 fuzz_function(reference_function, fuzzer, self)
 
                 # Execute the mutated method.
-                return reference_function(self, *args, **kwargs)
+                try:
+                    return reference_function(self, *args, **kwargs)
+                except AttributeError:
+                    pass
 
             wrap.func_name = attribute.func_name
 
@@ -101,7 +104,10 @@ def fuzz_clazz(clazz, advice):
                 fuzz_function(reference_function, fuzzer)
 
                 # Execute the mutated function.
-                return reference_function(*args, **kwargs)
+                try:
+                    return reference_function(*args, **kwargs)
+                except AttributeError:
+                    pass
 
             return wrap
 
