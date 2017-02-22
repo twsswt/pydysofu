@@ -433,10 +433,11 @@ def replace_steps_with(start=0, end=None, replacement='pass'):
     Replaces one or more lines of code with the specified replacement.  The portion of the code block to be replaced is
     given by the start and end index.
     """
+
     @log_invocation
     def _replace_steps(steps, context):
 
-        finish = len(steps) if end is None else end
+        finish = len(steps) if end is None else min(end, len(steps))
 
         if type(replacement) is str:
             parsed_ast = ast.parse(replacement)
@@ -494,8 +495,8 @@ def swap_if_blocks(steps, context):
 # Utility fuzzers
 
 
-def remove_last_steps(n):
-    fuzzer = filter_steps(choose_last_steps(n), replace_steps_with_pass)
+def remove_last_steps(n, reapply=False):
+    fuzzer = filter_steps(choose_last_steps(n, reapply), replace_steps_with_pass)
     return fuzzer
 
 
