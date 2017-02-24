@@ -86,29 +86,42 @@ def choose_random_steps(n):
 
 def choose_last_steps(n, reapply=True):
 
-    class _choose_last_step(object):
+    class _choose_last_steps(object):
 
         def __init__(self, _n, _reapply):
             self.n = _n
             self.reapply = _reapply
 
         def __call__(self, steps):
-            selected = list()
-            candidate = len(steps) - 1
 
-            while len(selected) < self.n and candidate >= 0:
-                step = steps[candidate]
-                while candidate > 0 and type(step) is ast.Pass:
-                    candidate -= 1
-                    step = steps[candidate]
-                selected.append((candidate, candidate + 1))
-                candidate -= 1
+            selected = list()
+
+            total_size = 0
+
+            end_index = len(steps) - 1
+            begin_index = end_index
+
+            def chunk_size():
+                return end_index - begin_index + 1
+
+            def current_step_is_pass():
+                return type(steps[begin_index]) is ast.Pass
+
+            while total_size < self.n and begin_index >= 0:
+                while (chunk_size() + total_size < self.n or current_step_is_pass()) and begin_index > 0:
+                    begin_index -= 1
+
+                selected.append((begin_index, end_index + 1))
+                total_size += chunk_size()
+
+                end_index = begin_index - 1
+                begin_index = end_index
 
             if not self.reapply:
-                self.n -= len(selected)
+                self.n -= total_size
             return selected
 
-    return _choose_last_step(n, reapply)
+    return _choose_last_steps(n, reapply)
 
 
 def choose_last_step(steps):
