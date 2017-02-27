@@ -25,9 +25,7 @@ from .config import pydysofu_random
 
 # Logging management machinery for fuzzer invocations.
 
-__fuzzer_invocations_lock = Lock()
-
-
+_fuzzer_invocations_lock = Lock()
 fuzzer_invocations = dict()
 
 
@@ -47,10 +45,10 @@ def reset_invocation_counters():
 
 def log_invocation(func):
     def func_wrapper(*args, **kwargs):
-        __fuzzer_invocations_lock.acquire()
+        _fuzzer_invocations_lock.acquire()
         key = (args[1].__class__, func)
         fuzzer_invocations[key] = fuzzer_invocations.get(key, 0) + 1
-        __fuzzer_invocations_lock.release()
+        _fuzzer_invocations_lock.release()
         return func(*args, **kwargs)
     return func_wrapper
 
