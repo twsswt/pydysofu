@@ -23,7 +23,7 @@ from .find_lambda import find_lambda_ast
 from .config import pydysofu_random
 
 
-# Logging management machinery for fuzzer invocations.
+# Logging Machinery
 
 _fuzzer_invocations_lock = Lock()
 fuzzer_invocations = dict()
@@ -53,8 +53,7 @@ def log_invocation(func):
     return func_wrapper
 
 
-# The identity step fuzzer.
-
+# Identity Fuzzer
 
 def identity(steps, context):
     """
@@ -63,8 +62,7 @@ def identity(steps, context):
     return steps
 
 
-# Step Filtering Functions.
-
+# Step Filtering Functions
 
 def choose_identity(steps):
     return [(0, len(steps))]
@@ -194,7 +192,6 @@ def invert(fuzz_filter):
 
 
 # Composite Fuzzers
-
 
 def filter_context(fuzz_filters=[(lambda context: True, identity)]):
     """
@@ -326,8 +323,7 @@ def recurse_into_nested_steps(
     return _recurse_into_nested_steps
 
 
-# Atomic Fuzzers.
-
+# Atomic Fuzzers
 
 def replace_condition_with(condition=False):
     """
@@ -503,8 +499,7 @@ def swap_if_blocks(steps, context):
     return steps
 
 
-# Utility fuzzers
-
+# Utility Fuzzers
 
 def remove_last_steps(n, reapply=False):
     fuzzer = filter_steps(choose_last_steps(n, reapply), replace_steps_with_pass)
