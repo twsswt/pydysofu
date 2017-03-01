@@ -14,9 +14,12 @@ from workflow_transformer import WorkflowTransformer
 
 
 _reference_syntax_trees = dict()
-
-
 _reference_get_attributes = dict()
+
+
+class FuzzException(Exception):
+    def __init__(self, type_error):
+        self.type_error = type_error
 
 
 def get_reference_syntax_tree(func):
@@ -44,7 +47,10 @@ def fuzz_function(reference_function, fuzzer=identity, context=None):
     # reference function's code object for this call.
     compiled_module = compile(fuzzed_syntax_tree, inspect.getsourcefile(reference_function), 'exec')
 
-    reference_function.func_code = compiled_module.co_consts[0]
+    try:
+        reference_function.func_code = compiled_module.co_consts[0]
+    except TypeError as type_error:
+        raise FuzzException(type_error)
 
 
 def fuzz_clazz(clazz, advice):
