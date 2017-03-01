@@ -321,6 +321,14 @@ class FuzziMossWeaverTest(unittest.TestCase):
 
         self.assertEquals(self.environment, [1, 2, 3, 1, 2])
 
+    def test_bad_fuzz(self):
+        test_advice = {
+            ExampleWorkflow.method_for_fuzzing: replace_steps_with(0, 3, '4bad_syntax')
+        }
+
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
+
+        self.assertRaises(StandardError, self.target.method_for_fuzzing)
 
 if __name__ == '__main__':
     unittest.main()

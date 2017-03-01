@@ -18,8 +18,13 @@ _reference_get_attributes = dict()
 
 
 class FuzzException(Exception):
-    def __init__(self, type_error):
+
+    def __init__(self, type_error, message):
         self.type_error = type_error
+        self.message = message
+
+    def __str__(self):
+        return self.message
 
 
 def get_reference_syntax_tree(func):
@@ -50,7 +55,7 @@ def fuzz_function(reference_function, fuzzer=identity, context=None):
     try:
         reference_function.func_code = compiled_module.co_consts[0]
     except TypeError as type_error:
-        raise FuzzException(type_error)
+        raise FuzzException(type_error, str(compiled_module.co_consts[0]))
 
 
 def fuzz_clazz(clazz, advice):
