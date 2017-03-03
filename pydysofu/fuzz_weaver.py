@@ -55,7 +55,7 @@ def fuzz_function(reference_function, fuzzer=identity, context=None):
     try:
         reference_function.func_code = compiled_module.co_consts[0]
     except TypeError as type_error:
-        raise FuzzException(type_error, str(compiled_module.co_consts[0]))
+        raise FuzzException(type_error, str(compiled_module.co_consts))
 
 
 def fuzz_clazz(clazz, advice):
