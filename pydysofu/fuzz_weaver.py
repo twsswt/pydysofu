@@ -17,16 +17,6 @@ _reference_syntax_trees = dict()
 _reference_get_attributes = dict()
 
 
-class FuzzException(Exception):
-
-    def __init__(self, type_error, message):
-        self.type_error = type_error
-        self.message = message
-
-    def __str__(self):
-        return self.message
-
-
 def get_reference_syntax_tree(func):
     if func not in _reference_syntax_trees:
         func_source_lines = inspect.getsourcelines(func)[0]
@@ -52,10 +42,7 @@ def fuzz_function(reference_function, fuzzer=identity, context=None):
     # reference function's code object for this call.
     compiled_module = compile(fuzzed_syntax_tree, inspect.getsourcefile(reference_function), 'exec')
 
-    try:
-        reference_function.func_code = compiled_module.co_consts[0]
-    except TypeError as type_error:
-        raise FuzzException(type_error, str(compiled_module.co_consts))
+    reference_function.func_code = compiled_module.co_consts[0]
 
 
 def fuzz_clazz(clazz, advice):
@@ -95,10 +82,7 @@ def fuzz_clazz(clazz, advice):
                 fuzz_function(reference_function, fuzzer, self)
 
                 # Execute the mutated method.
-                try:
-                    return reference_function(self, *args, **kwargs)
-                except AttributeError:
-                    pass
+                return reference_function(self, *args, **kwargs)
 
             wrap.func_name = attribute.func_name
 
@@ -115,10 +99,7 @@ def fuzz_clazz(clazz, advice):
                 fuzz_function(reference_function, fuzzer)
 
                 # Execute the mutated function.
-                try:
-                    return reference_function(*args, **kwargs)
-                except AttributeError:
-                    pass
+                return reference_function(*args, **kwargs)
 
             return wrap
 
