@@ -70,8 +70,6 @@ A number of demonstrator fuzzers are also provided that combine the core fuzzers
 
 ## Tutorial
 
-###Basic usage
-
 Consider the following Python class representing a collection of simple workflow descriptions defined in a separate
 source file.
 
