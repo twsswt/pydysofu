@@ -70,7 +70,6 @@ A number of demonstrator fuzzers are also provided that combine the core fuzzers
 * Duplicate last step
 * Remove random step
 
-
 ## Tutorials and Examples
 
  * There is a Jupyter Notebook tutorial available [./tutorial.ipynb](./tutorial.ipynb).
