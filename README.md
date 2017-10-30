@@ -1,5 +1,7 @@
 # PyDySoFu - Python Dynamic Source Fuzzer
 
+A library for fuzzing Python functions at runtime.
+
 ## Contributors
 
 * Tom Wallis<br/>
@@ -30,7 +32,8 @@ a fuzzed list of statements.
 
 ## Applications
 
-PyDySoFu was originally developed as a fuzzing tool to simulate contingent behaviour in socio-technical systems.  However, there are a number of other possible applications:
+PyDySoFu was originally developed as a fuzzing tool to simulate contingent behaviour in socio-technical systems.
+However, there are a number of other possible applications:
 
  * Simulating Byzantine disruption in distributed system testing.
  * Simulations of complex behaviour in distributed systems.
@@ -68,47 +71,6 @@ A number of demonstrator fuzzers are also provided that combine the core fuzzers
 * Remove random step
 
 
-## Tutorial
+## Tutorials and Examples
 
-###Basic usage
-
-Consider the following Python class representing a collection of simple workflow descriptions defined in a separate
-source file.
-
-    class TutorialWorkflow(object):
-        def __init__(self):
-            self.environment = list()
-
-        def an_activity(self):
-            self.environment.append(1)
-            self.environment.append(2)
-            self.environment.append(3)
-
-We can fuzz the workflow to have a randomly chosen removed line as follows.
-
-    from fuzzi_moss import *
-    from tutorial import TutorialWorkflow
-
-    advice = {
-        TutorialWorkflow.an_activity: remove_random_step
-    }
-    fuzz_clazz(ExampleWorkflow, advice)
-
-The advice dictionary maps the function pointer to the remove_random_step fuzzer.  The fuzz_clazz operation then applies
-this advice to the whole ExampleWorkflow class.
-
-Now we can use the fuzzed class as normal.
-
-    workflow = ExampleWorkflow()
-    workflow.activity()
-    print workflow.environment
-    workflow.activity()
-    print workflow.environment
-
-Output (for example):
-
-    [2, 3]
-    [1, 3]
-
-Note that the fuzzer will be re-applied each time the fuzzed function is called meaning that in this case a different
-step can be removed from the workflow on each invocation.
+ * There is a Jupyter Notebook tutorial available [./tutorial.ipynb](./tutorial.ipynb).
