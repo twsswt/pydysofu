@@ -485,7 +485,9 @@ def duplicate_steps(steps, context):
 
 @log_invocation
 def shuffle_steps(steps, context):
-    return pydysofu_random.shuffle(steps)
+    result = list(steps)
+    pydysofu_random.shuffle(result)
+    return result
 
 
 @log_invocation
