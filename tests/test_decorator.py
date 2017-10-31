@@ -223,11 +223,7 @@ class FuzziMossDecoratorTest(unittest.TestCase):
 
     def test_shuffle_steps(self):
         def mock_random_shuffle(iterable):
-            result = list()
-            result.append(iterable[2])
-            result.append(iterable[0])
-            result.append(iterable[1])
-            return result
+            iterable[0], iterable[1], iterable[2] = iterable[2], iterable[0], iterable[1]
 
         fm.pydysofu_random.shuffle = Mock(side_effect=mock_random_shuffle)
 

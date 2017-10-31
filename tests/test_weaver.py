@@ -103,10 +103,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
 
     def test_shuffle_steps(self):
         def mock_random_shuffle(iterable):
-            temp = list(iterable)
-            iterable[0] = temp[2]
-            iterable[1] = temp[0]
-            iterable[2] = temp[1]
+            iterable[0], iterable[1], iterable[2] = iterable[2], iterable[0], iterable[1]
 
         fm.pydysofu_random.shuffle = Mock(side_effect=mock_random_shuffle)
 
