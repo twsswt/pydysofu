@@ -16,10 +16,12 @@ date: CURRENT DATE
 bibliography: refs.bib
 ---
 
-In constructing agent-based models of systems, variation in the simulated behaviour is often a crucial component. Examples might include simulations of security systems where human agents do not always behave predictably, leading to important edge cases which must be identified during he modelling process. However, hard-coding this variance leads to unwieldy models which are cumbersome to develop and maintain — this leaves models either incomplete (without variance) or overly complex (when variance is hard-coded).
+A convenient formulation of a workflow model of a system is to design it as an object-oriented program, where each class represents a given agent's role. Writing models as programs lens benefits such as easy analytics and behaviour insepction, but these features cause simulation code to become bloated and more difficult to maintain. Moreover, complicated model features unrelated to the expected behaviour of the model --- such as varying, contingent behaviours of unreliable agents --- can severely complicate a model.
 
-PyDySoFu is a Python library which simplifies modelling with variance via aspect-orientation [elrad2001aspect]. Using the workflow modelling library Theatre_ag, PyDySoFu applies variance to behaviours by dynamically fuzzing the workflow. Dynamic fuzzing is the alteration of simulation program code at runtime. This approach has a number of benefits:
+Similar problems are solved in software engineering through the use of aspect-orientation [elrad2001aspect], allowing a developer to seperate the concerns of ancillary program details such as logging and analytics from the intended behaviour of the relevant code. To this end, we present PyDySoFu, an aspect framework designed to abstract ancillary details of simulation code from the simulation's indended behaviour. In particular, PyDySoFu is capable of altering simulation behaviour for modelling things such as varying, contingent behaviour in a simulation of socio-technical systems, allowing for a developer to separately model an agent's intended behaviour and the "mistakes" they can make. An example of this is available in the Fuzzi-Moss aspect library using this framework [fuzzimoss_repo].
 
-* The model becomes a blueprint of expected behaviour, and advice applied to each workflow step serves as an indicator for “mistakes” in the blueprint’s execution. This allows for the separation of the concerns of defining the model and defining its variance.
-* The fuzzing is applied using aspects, so that the underlying task description is oblivious to the simulated mutations. This allows many different fuzzing combinations to easily be experimented with [elrad2001aspect], using the separation of concerns to simplify the model's architecture.
-* Dynamic fuzzing permits a simple model definition without requiring a DSL, making the development and maintainance of the model simpler, as well as increasing readability by utilising popular general-purpose languages.
+We envisage aspect-oriented modelling allowing for cleaner models with more easily integrated features. In addition, where the aspects introduce changes to the model --- such as varying, behaviour --- PyDySoFu allows one to construct experiments with vcastly different model components *without re-engineering effort*. Evidently, this has applications in areas such as:
+
+* Human-Centered security modelling
+* Safety Critical Systems modelling
+* Verifying system architectures prior to construction/deployment
