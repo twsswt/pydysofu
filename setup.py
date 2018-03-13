@@ -10,7 +10,7 @@ setup(
     author='Tom Wallis, Tim Storer',
     author_email='twallisgm@gmail.com',
     description='Python Dynamic Source Fuzzing',
-    setup_requires=[],
+    setup_requires=['asp'],
     test_suite='nose.collector',
     tests_require=['mock', 'nose']
 )

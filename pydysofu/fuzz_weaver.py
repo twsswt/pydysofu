@@ -8,13 +8,11 @@ import inspect
 
 from core_fuzzers import identity
 
-from inspect import getmembers
-
 from workflow_transformer import WorkflowTransformer
 
+from asp import weave_clazz, weave_module, unweave_class, unweave_all_classes
 
 _reference_syntax_trees = dict()
-_reference_get_attributes = dict()
 
 
 def get_reference_syntax_tree(func):
@@ -45,87 +43,43 @@ def fuzz_function(reference_function, fuzzer=identity, context=None):
     reference_function.func_code = compiled_module.co_consts[0]
 
 
-def fuzz_clazz(clazz, advice):
-    """
-    Applies fuzzers specified in the supplied advice dictionary to methods in the supplied class.
+class FuzzingAspect(object):
 
-    Fuzzing is applied dynamically at runtime by intercepting invocations of __getattribute__ on target objects.
-    The method requested by the __getattribute__ call is fuzzed using the fuzzer specified in the supplied advice
-    dictionary (which maps method references to fuzzers)before returning it to the requester. If no fuzzer is specified
-    for a function then the identity fuzzer is applied in case the method has been previously fuzzed.
+    def __init__(self, fuzzing_advice):
+        self.fuzzing_advice = fuzzing_advice
 
-    A fuzzer value may itself be a dictionary of object filter->fuzzer mappings.  In this case, the dictionary is
-    searched for a filter that matches the target (self) object specified in the __getattribute__ call.
-
-    :param clazz : the class to fuzz.
-    :param advice : the dictionary of method reference->fuzzer mappings to apply for the class.
-    """
-
-    if clazz not in _reference_get_attributes:
-        _reference_get_attributes[clazz] = clazz.__getattribute__
-
-    def __fuzzed_getattribute__(self, item):
-        attribute = object.__getattribute__(self, item)
-
-        if item[0:2] == '__':
-            return attribute
-
-        elif inspect.ismethod(attribute):
-
-            def wrap(*args, **kwargs):
-
-                reference_function = attribute.im_func
-                # Ensure that advice key is unbound method for instance methods.
-                advice_key = getattr(attribute.im_class, attribute.func_name)
-                fuzzer = advice.get(advice_key, identity)
-
-                fuzz_function(reference_function, fuzzer, self)
-
-                # Execute the mutated method.
-                return reference_function(self, *args, **kwargs)
-
-            wrap.func_name = attribute.func_name
-
-            return wrap
-
-        elif inspect.isfunction(attribute):
-
-            def wrap(*args, **kwargs):
-
-                reference_function = attribute
-                advice_key = reference_function
-                fuzzer = advice.get(advice_key, identity)
-
-                fuzz_function(reference_function, fuzzer)
-
-                # Execute the mutated function.
-                return reference_function(*args, **kwargs)
-
-            return wrap
-
+    def prelude(self, attribute, context, *args, **kwargs):
+        # Ensure that advice key is unbound method for instance methods.
+        if inspect.ismethod(attribute):
+            reference_function = attribute.im_func
+            advice_key = getattr(attribute.im_class, attribute.func_name)
         else:
-            return attribute
+            reference_function = attribute
+            advice_key = reference_function
 
-    clazz.__getattribute__ = __fuzzed_getattribute__
+        fuzzer = self.fuzzing_advice.get(advice_key, identity)
+        fuzz_function(reference_function, fuzzer, context)
+
+    def encore(self, reference_function, context, result):
+        pass
+
+
+def fuzz_clazz(clazz, fuzzing_advice):
+
+    fuzzing_aspect = FuzzingAspect(fuzzing_advice)
+
+    advice = {k: fuzzing_aspect for k in fuzzing_advice.keys()}
+
+    weave_clazz(clazz, advice)
 
 
 def defuzz_class(clazz):
-    if clazz in _reference_get_attributes:
-        clazz.__getattribute__ = _reference_get_attributes[clazz]
+    unweave_class(clazz)
 
 
 def defuzz_all_classes():
-    for clazz in _reference_get_attributes.keys():
-        defuzz_class(clazz)
+    unweave_all_classes()
 
 
 def fuzz_module(mod, advice):
-    """
-    Applies fuzzers specified in the supplied advice dictionary to methods in supplied module.  All member classes and
-    functions are inspected in turn, with the specified advice being applied to each.
-    :param mod : the module to fuzz.
-    :param advice : the dictionary of method->fuzzer mappings to apply.
-    """
-    for _, member in getmembers(mod):
-        if inspect.isclass(member):
-            fuzz_clazz(member, advice)
+    weave_module(mod, advice)
