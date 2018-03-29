@@ -10,7 +10,7 @@ from core_fuzzers import identity
 
 from workflow_transformer import WorkflowTransformer
 
-from asp import weave_clazz, weave_module, unweave_class, unweave_all_classes
+from asp import weave_clazz, weave_module, unweave_class, unweave_all_classes, IdentityAspect
 
 _reference_syntax_trees = dict()
 
@@ -43,12 +43,15 @@ def fuzz_function(reference_function, fuzzer=identity, context=None):
     reference_function.func_code = compiled_module.co_consts[0]
 
 
-class FuzzingAspect(object):
+class FuzzingAspect(IdentityAspect):
 
     def __init__(self, fuzzing_advice):
         self.fuzzing_advice = fuzzing_advice
 
     def prelude(self, attribute, context, *args, **kwargs):
+        self.apply_fuzzing(attribute, context)
+
+    def apply_fuzzing(self, attribute, context):
         # Ensure that advice key is unbound method for instance methods.
         if inspect.ismethod(attribute):
             reference_function = attribute.im_func
@@ -59,9 +62,6 @@ class FuzzingAspect(object):
 
         fuzzer = self.fuzzing_advice.get(advice_key, identity)
         fuzz_function(reference_function, fuzzer, context)
-
-    def encore(self, reference_function, context, result):
-        pass
 
 
 def fuzz_clazz(clazz, fuzzing_advice):
