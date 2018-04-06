@@ -23,7 +23,7 @@ def copy_func(f):
     name (or provide a new name)
     '''
     fn = types.FunctionType(f.__code__, f.__globals__, f.__name__,
-        f.__defaults__, f.__closure__)
+                            f.__defaults__, f.__closure__)
     # in case f was given attrs (note this dict is a shallow copy):
     fn.__dict__.update(f.__dict__)
     return fn
@@ -43,6 +43,10 @@ def get_reference_syntax_tree(func):
     return _reference_syntax_trees[func]
 
 
+def record_generated_syntax_tree(func, tree):
+    _reference_syntax_trees[func] = tree
+
+
 def fuzz_function(reference_function, fuzzer=identity, context=None):
     reference_syntax_tree = get_reference_syntax_tree(reference_function)
 
@@ -52,24 +56,29 @@ def fuzz_function(reference_function, fuzzer=identity, context=None):
 
     # Compile the newly mutated function into a module, extract the mutated function code object and replace the
     # reference function's code object for this call.
-    compiled_module = compile(fuzzed_syntax_tree, inspect.getsourcefile(reference_function), 'exec')
+    compiled_module = compile(fuzzed_syntax_tree, '<potentially custom>', 'exec')
 
     reference_function.func_code = compiled_module.co_consts[0]
-    return reference_function  # So it can be caught in the HabitFormingAspect
+    function_clone = copy_func(reference_function)
+    record_generated_syntax_tree(function_clone, fuzzed_syntax_tree)
+    return function_clone  # So it can be caught in the HabitFormingAspect
 
 
 class FuzzingAspect(IdentityAspect):
 
-    def __init__(self, fuzzing_advice):
+    def __init__(self, fuzzing_advice={}):
         self.fuzzing_advice = fuzzing_advice
+
+    def give_advice(self, fuzzing_advice):
+        self.fuzzing_advice.update(fuzzing_advice)
 
     def prelude(self, attribute, context, *args, **kwargs):
         self.apply_fuzzing(attribute, context)
 
     def apply_fuzzing(self, attribute, context):
-        # Ensure that advice key is unbound method for instance methods.
         if inspect.ismethod(attribute):
             reference_function = attribute.im_func
+            # Ensure that advice key is unbound method for instance methods.
             advice_key = getattr(attribute.im_class, attribute.func_name)
         else:
             reference_function = attribute
@@ -79,13 +88,13 @@ class FuzzingAspect(IdentityAspect):
         fuzz_function(reference_function, fuzzer, context)
 
 
-class HabitFormingFuzzer(FuzzingAspect):
+class IncrementalImprover(FuzzingAspect):
     '''
     A fuzzer aspect class which improves on old variants, effectively forming habits.
     '''
-    def __init__(self, fuzzing_advice, variants_per_round, round_length, success_metric_function):
+    def __init__(self, variants_per_round, round_length, success_metric_function, fuzzer=lambda x: x, fuzzing_advice={}):
 
-        super(FuzzingAspect, self).__init__(fuzzing_advice)
+        super(IncrementalImprover, self).__init__(fuzzing_advice)
 
         self.variants_per_round = variants_per_round
         self.round_length = round_length
@@ -93,6 +102,7 @@ class HabitFormingFuzzer(FuzzingAspect):
         self.current_attribute = None
         self.reference_attribute = None
         self.success_metric = success_metric_function
+        self.advice_key_map = {}
 
         '''
         A list containing a dictionary for each round. Each round's dictionary is of format {variant: [results]}.
@@ -109,13 +119,13 @@ class HabitFormingFuzzer(FuzzingAspect):
         :return:
         '''
 
-        if self.current_attribute == None:
-            self.reference_attribute = copy_func(attribute)
+        if self.current_attribute is None:
+            self.reference_attribute = attribute
             self.current_attribute = attribute
             self.construct_new_round(attribute, context)
 
         elif self.invocation_count != 0 and self.invocation_count % (self.variants_per_round * self.round_length) == 0:
-            self.construct_new_round(self.best_attribute_in_current_round, context)
+            self.construct_new_round(self.best_attribute_in_current_round[0], context)
 
         self.invocation_count += 1
 
@@ -126,6 +136,12 @@ class HabitFormingFuzzer(FuzzingAspect):
             possible_attr = random.choice(self.current_round.items())
             if len(possible_attr[1]) != self.round_length:
                 self.current_attribute = possible_attr[0]
+
+        # reference_function.func_code = compiled_module.co_consts[0]
+        if isinstance(attribute, types.MethodType):
+            attribute.im_func.func_code = self.current_attribute.func_code
+        else:
+            attribute.func_code = self.current_attribute.func_code
 
     def encore(self, attribute, context, result):
         '''
@@ -158,7 +174,7 @@ class HabitFormingFuzzer(FuzzingAspect):
             of success metrics for the current round
         '''
         current_round = copy.deepcopy(self.current_round)
-        for variant, results in current_round:
+        for variant, results in current_round.items():
             if len(results) != 0:
                 current_round[variant] = sum([self.success_metric(result) for result in results]) / len(results)
             else:
@@ -179,35 +195,39 @@ class HabitFormingFuzzer(FuzzingAspect):
 
         # Iterate through a new round, and construct new variants to go in it.
         # If this is our *first* variant, add the unaltered target; sometimes original is best!
-        for i in range(self.round_length):
+        for i in range(self.variants_per_round):
             if i == 0 and self.invocation_count == 0:
                 current_round[attribute] = []
 
             # We're not adding the unaltered target, so generate and add a variant.
             else:
-                target = copy_func(attribute)
-
                 # Ensure that advice key is unbound method for instance methods.
-                if inspect.ismethod(target):
-                    reference_function = target.im_func
-                    advice_key = getattr(target.im_class, target.func_name)
+                if inspect.ismethod(attribute):
+                    reference_function = attribute.im_func
+                    advice_key = getattr(attribute.im_class, attribute.func_name)
                 else:
-                    reference_function = target
-                    advice_key = reference_function
+                    reference_function, advice_key = attribute, attribute
 
                 fuzzer = self.fuzzing_advice.get(advice_key, identity)
                 variant = fuzz_function(reference_function, fuzzer, context)
+                self.give_advice({variant: fuzzer})
                 current_round[variant] = []
 
         self.variants.append(current_round)
 
 
+def fuzz_clazz(clazz, fuzzing_advice, advice_aspect=FuzzingAspect()):
+    '''
 
-def fuzz_clazz(clazz, fuzzing_advice):
+    :param clazz:
+    :param fuzzing_advice:
+    :param advice_aspect:
+    :return:
+    '''
 
-    fuzzing_aspect = FuzzingAspect(fuzzing_advice)
+    advice_aspect.give_advice(fuzzing_advice)
 
-    advice = {k: fuzzing_aspect for k in fuzzing_advice.keys()}
+    advice = {k: advice_aspect for k in fuzzing_advice.keys()}
 
     weave_clazz(clazz, advice)
 
