@@ -56,26 +56,64 @@ class Maze(object):
 
 class IncrementalImproverTest(unittest.TestCase):
     def test_improves_behaviour(self):
-        incremental_improver = IncrementalImprover(round_length=10,
-                                                   variants_per_round=6,
-                                                   success_metric_function=lambda x: x)
+        # Some control variables
+        round_length = 10
+        variants_per_round=6
+        number_of_rounds = 8
+        def success_metric(x):
+            return x
+
+        incremental_improver = IncrementalImprover(round_length=round_length,
+                                                   variants_per_round=variants_per_round,
+                                                   success_metric_function=success_metric)
+        # ==== CONTROL: what happens if we change nothing?
+
+        # Get the initial number of moves remaining after movement.
+        maze = Maze()
+        maze.reset_position()
+        maze.move()
+
+        for i in range(number_of_rounds / 2):
+            initial_moves_remaining = maze.moves_remaining()
+            best_remaining = maze.moves_remaining()
+            for _ in range(2):
+                for j in range(variants_per_round * round_length):
+                    maze.move()
+
+                    if maze.moves_remaining() < best_remaining:
+                        best_remaining = maze.moves_remaining()
+
+                    maze.reset_position()
+
+            # Every two rounds, we should see no improvement - UNLESS we're fuzzing.
+            self.assertEqual(initial_moves_remaining, best_remaining)
+
+        # ==== Experiment: applying fuzzing improves our behaviour.
         fuzz_clazz(Maze,
                    {Maze.move: repeat_random_step},
                    advice_aspect=incremental_improver)
-        maze = Maze()
 
         # Get the initial number of moves remaining after movement.
+        maze = Maze()
         maze.reset_position()
         maze.move()
-        initial_moves_remaining = maze.moves_remaining()
 
-        for i in range(240):
-            maze.move()
-            print i, '\t->\t', maze.pos
-            maze.reset_position()
+        for i in range(number_of_rounds / 2):
+            initial_moves_remaining = maze.moves_remaining()
+            best_remaining = maze.moves_remaining()
+            for _ in range(2):
+                for j in range(variants_per_round * round_length):
+                    maze.move()
+
+                    if maze.moves_remaining() < best_remaining:
+                        best_remaining = maze.moves_remaining()
+
+                    maze.reset_position()
+
+            # Every two rounds, we should see no improvement - UNLESS we're fuzzing.
+            self.assertGreater(initial_moves_remaining, best_remaining)
 
         # After four rounds (240 = 4 * 60) of incremental improvement, we'd expect the solution to be better than the
         # standard moveset, which is a no-op. For this not to happen we'd need to randomly generate 24 (24 = 6 * 4)
         # variants which were all moving in the /wrong/ direction!)
         maze.move()
-        self.assertLess(maze.moves_remaining(), initial_moves_remaining)

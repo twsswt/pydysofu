@@ -216,6 +216,7 @@ class IncrementalImprover(FuzzingAspect):
         self.variants.append(current_round)
 
 
+
 def fuzz_clazz(clazz, fuzzing_advice, advice_aspect=FuzzingAspect()):
     '''
 
