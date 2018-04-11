@@ -109,7 +109,7 @@ class IncrementalImprover(FuzzingAspect):
         '''
         self.variants = []
 
-    def prelude(self, attribute, context, *args, **kwargs):
+    def around(self, attribute, context, *args, **kwargs):
         '''
 
         :param attribute:
@@ -119,9 +119,11 @@ class IncrementalImprover(FuzzingAspect):
         :return:
         '''
 
-        if self.current_attribute is None:
+        # ===== PRELUDE SECTION
+
+        # Checks to see whether we need to make a new round, or if it's the first time we've run, for book-keeping
+        if self.reference_attribute is None:
             self.reference_attribute = attribute
-            self.current_attribute = attribute
             self.construct_new_round(attribute, context)
 
         elif self.invocation_count != 0 and self.invocation_count % (self.variants_per_round * self.round_length) == 0:
@@ -130,32 +132,28 @@ class IncrementalImprover(FuzzingAspect):
         self.invocation_count += 1
 
         # Select a new current variant from the round.
-        self.current_attribute = None
-        while self.current_attribute is None:
+        current_variant = None
+        while current_variant is None:
             # Randomly select an item from the list of format [(variant1, history1), (variant2, history2), ...]
             possible_attr = random.choice(self.current_round.items())
             if len(possible_attr[1]) != self.round_length:
-                self.current_attribute = possible_attr[0]
+                current_variant = possible_attr[0]
 
-        # reference_function.func_code = compiled_module.co_consts[0]
         if isinstance(attribute, types.MethodType):
-            attribute.im_func.func_code = self.current_attribute.func_code
+            attribute.im_func.func_code = current_variant.func_code
         else:
-            attribute.func_code = self.current_attribute.func_code
+            attribute.func_code = current_variant.func_code
 
-    def encore(self, attribute, context, result):
-        '''
-        An ASP-style Encore function to record the result of a variant's execution.
-        :param attribute:
-        :param context:
-        :param result:
-        '''
-        # The attribute passed in here is meaningless, because we actually care about the *variant* of the attribute
-        # that was just executed. Use self.current_attribute instead.
+        # ===== RUN THE VARIANT
+
+        result = super(IncrementalImprover, self).around(attribute, context, *args, **kwargs)
+
+        # ===== ENCORE SECTION
+
         current_round = self.variants[-1]
-        result_list = current_round[self.current_attribute]
+        result_list = current_round[current_variant]
         result_list.append(result)
-        current_round[self.current_attribute] = result_list
+        current_round[current_variant] = result_list
         self.variants[-1] = current_round
 
     @property
