@@ -164,8 +164,7 @@ class IncrementalImprover(FuzzingAspect):
         '''
         return self.variants[-1]
 
-    @property
-    def best_attribute_in_current_round(self):
+    def nth_best_attribute_in_current_round(self, n):
         '''
         The attribute variant in the current round which seems to perform best
         :return: A tuple of the format (variant function, summed success metrics) which has the highest average
@@ -181,7 +180,16 @@ class IncrementalImprover(FuzzingAspect):
 
         result_list = current_round.items()
         result_list.sort(key=lambda x: x[1])
-        return result_list[-1]
+        return result_list[-n]
+
+    @property
+    def best_attribute_in_current_round(self):
+        '''
+        The attribute variant in the current round which seems to perform best
+        :return: A tuple of the format (variant function, summed success metrics) which has the highest average
+            of success metrics for the current round
+        '''
+        return self.nth_best_attribute_in_current_round(1)
 
     def construct_new_round(self, attribute, context):
         '''
