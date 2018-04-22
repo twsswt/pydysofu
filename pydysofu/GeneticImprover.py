@@ -61,7 +61,10 @@ class GeneticImprover(IncrementalImprover):
                     # Splice two previous variants to make a new one.
                     variant_function_1 = self.nth_best_attribute_in_current_round(variant_1_to_splice)[0]
                     variant_function_2 = self.nth_best_attribute_in_current_round(variant_2_to_splice)[0]
-                    new_variant_tree = self.splice(variant_function_1, variant_function_2)
+                    variant_1_tree, variant_2_tree = get_reference_syntax_tree(variant_function_1), \
+                                                     get_reference_syntax_tree(variant_function_2)
+
+                    new_variant_tree = self.splice(variant_1_tree, variant_2_tree)
                     variant_code = compile(new_variant_tree, '<spliced tree>', 'exec')
 
                     # A shell we'll inject new code into
@@ -105,9 +108,7 @@ class GeneticImprover(IncrementalImprover):
 
         self.variants.append(current_round)
 
-    def splice(self, variant_1, variant_2):
-
-        variant_1_tree, variant_2_tree = get_reference_syntax_tree(variant_1), get_reference_syntax_tree(variant_2)
+    def splice(self, variant_1_tree, variant_2_tree):
 
         new_tree = deepcopy(variant_1_tree)
         v1_steps = variant_1_tree.body[0].body
