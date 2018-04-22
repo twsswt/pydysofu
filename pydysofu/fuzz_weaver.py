@@ -36,7 +36,6 @@ def previously_fuzzed_method(func):
 
 
 
-
 def get_reference_syntax_tree(func):
     if func not in _reference_syntax_trees:
 
@@ -140,9 +139,15 @@ class IncrementalImprover(FuzzingAspect):
             self.reference_attribute = attribute
             self.construct_new_round(attribute, context)
 
-        elif self.invocation_count != 0 and self.invocation_count % (self.variants_per_round * self.iterations_per_variant) == 0:
-            self.rank_previous_variants()
-            self.construct_new_round(self.best_attribute_in_current_round[0], context)
+        elif self.invocation_count != 0 \
+                and self.invocation_count % (self.variants_per_round * self.iterations_per_variant) == 0:
+
+            # Only rank conditionally, because if we've called IncrementalImprover.rank_previous_variants manually or if
+            # we've looked for the best attribute in the round that just finished, this has already been run!
+            if len(self.current_round.items()) is not 0:
+                self.rank_previous_variants()
+
+            self.construct_new_round(self.best_attribute_in_last_round[0], context)
 
         self.invocation_count += 1
 
@@ -183,22 +188,28 @@ class IncrementalImprover(FuzzingAspect):
     def round_length(self):
         return self.iterations_per_variant * self.variants_per_round
 
-    def nth_best_attribute_in_current_round(self, n):
+    def nth_best_attribute_in_last_round(self, n):
         '''
         The attribute variant in the current round which seems to perform best
         :return: A tuple of the format (variant function, summed success metrics) which has the highest average
             of success metrics for the current round
         '''
-        return self.variants_ordered_by_success[-1][n-1]
+
+        # If we just finished a round, make *that* the last round, and begin a new one.
+        if self.invocation_count % (self.variants_per_round * self.iterations_per_variant) == 0:
+            self.rank_previous_variants()
+
+        if len(self.variants_ordered_by_success) != 0:
+            return self.variants_ordered_by_success[-1][n-1]
 
     @property
-    def best_attribute_in_current_round(self):
+    def best_attribute_in_last_round(self):
         '''
         The attribute variant in the current round which seems to perform best
         :return: A tuple of the format (variant function, summed success metrics) which has the highest average
             of success metrics for the current round
         '''
-        return self.nth_best_attribute_in_current_round(1)
+        return self.nth_best_attribute_in_last_round(1)
 
     def rank_previous_variants(self):
         current_round = copy.deepcopy(self.current_round)

@@ -18,8 +18,8 @@ def choose_new_ranks(variant_1_rank, variant_2_rank, already_spliced):
 
 class GeneticImprover(IncrementalImprover):
 
-    def __init__(self, *args, **kwargs):
-        super(GeneticImprover, self).__init__(*args, **kwargs)
+    def __init__(self, variants_per_round, iterations_per_variant, success_metric_function, fuzzer=lambda x: x, fuzzing_advice={}):
+        super(GeneticImprover, self).__init__(variants_per_round, iterations_per_variant, success_metric_function, fuzzer, fuzzing_advice)
 
     @property
     def variants_to_splice(self):
@@ -59,8 +59,8 @@ class GeneticImprover(IncrementalImprover):
                 if len(self.variants) != 0 and i < self.variants_to_splice:
 
                     # Splice two previous variants to make a new one.
-                    variant_function_1 = self.nth_best_attribute_in_current_round(variant_1_to_splice)[0]
-                    variant_function_2 = self.nth_best_attribute_in_current_round(variant_2_to_splice)[0]
+                    variant_function_1 = self.nth_best_attribute_in_last_round(variant_1_to_splice)[0]
+                    variant_function_2 = self.nth_best_attribute_in_last_round(variant_2_to_splice)[0]
                     variant_1_tree, variant_2_tree = get_reference_syntax_tree(variant_function_1), \
                                                      get_reference_syntax_tree(variant_function_2)
 

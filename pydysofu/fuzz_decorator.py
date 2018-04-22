@@ -36,3 +36,14 @@ class fuzz(object):
             return func(*args, **kwargs)
 
         return wrap
+
+
+# def pretend_method(func_to_wrap):
+#     genclass = "class AutoGenClass(object):\n" \
+#                "  def " + func_to_wrap.func_name + "(self, *args, **kwargs):\n" \
+#                                            "    return func(*args, **kwargs)"
+#     autogen_globals = globals()
+#     autogen_globals["func"] = func_to_wrap
+#     exec(genclass, autogen_globals)
+#     return eval("AutoGenClass()." + func_to_wrap.func_name)
+
