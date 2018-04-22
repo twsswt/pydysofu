@@ -520,11 +520,9 @@ def remove_random_step(steps, context):
 
 
 def repeat_random_step(steps, _):
-    # Hacking around 'return' lines being at the end...cleaner ways to do this but they'll take *very* long and should
-    # Only work for things that aren't our standard workflow format anyway... *sigh*
 
     non_duplicate_steps = []
-    for step in steps[:-1]:
+    for step in steps:
         if step not in non_duplicate_steps:
 
             non_duplicate_steps.append(step)

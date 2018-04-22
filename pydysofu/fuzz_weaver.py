@@ -28,9 +28,22 @@ def copy_func(f):
     fn.__dict__.update(f.__dict__)
     return fn
 
+def previously_fuzzed_method(func):
+    if not inspect.ismethod(func):
+        return False
+
+    return "_mod" in str(func.im_func.func_code)
+
+
+
 
 def get_reference_syntax_tree(func):
     if func not in _reference_syntax_trees:
+
+        # Catch previously fuzzed functions wrapped in a method
+        if previously_fuzzed_method(func):
+            return get_reference_syntax_tree(func.im_func)
+
         func_source_lines = inspect.getsourcelines(func)[0]
 
         global_indentation = len(func_source_lines[0]) - len(func_source_lines[0].strip())
@@ -92,17 +105,18 @@ class IncrementalImprover(FuzzingAspect):
     '''
     A fuzzer aspect class which improves on old variants, effectively forming habits.
     '''
-    def __init__(self, variants_per_round, round_length, success_metric_function, fuzzer=lambda x: x, fuzzing_advice={}):
+    def __init__(self, variants_per_round, iterations_per_variant, success_metric_function, fuzzer=lambda x: x, fuzzing_advice={}):
 
         super(IncrementalImprover, self).__init__(fuzzing_advice)
 
         self.variants_per_round = variants_per_round
-        self.round_length = round_length
+        self.iterations_per_variant = iterations_per_variant
         self.invocation_count = 0
         self.current_attribute = None
         self.reference_attribute = None
         self.success_metric = success_metric_function
         self.advice_key_map = {}
+        self.variants_ordered_by_success = []
 
         '''
         A list containing a dictionary for each round. Each round's dictionary is of format {variant: [results]}.
@@ -126,7 +140,8 @@ class IncrementalImprover(FuzzingAspect):
             self.reference_attribute = attribute
             self.construct_new_round(attribute, context)
 
-        elif self.invocation_count != 0 and self.invocation_count % (self.variants_per_round * self.round_length) == 0:
+        elif self.invocation_count != 0 and self.invocation_count % (self.variants_per_round * self.iterations_per_variant) == 0:
+            self.rank_previous_variants()
             self.construct_new_round(self.best_attribute_in_current_round[0], context)
 
         self.invocation_count += 1
@@ -136,7 +151,7 @@ class IncrementalImprover(FuzzingAspect):
         while current_variant is None:
             # Randomly select an item from the list of format [(variant1, history1), (variant2, history2), ...]
             possible_attr = random.choice(self.current_round.items())
-            if len(possible_attr[1]) != self.round_length:
+            if len(possible_attr[1]) != self.iterations_per_variant:
                 current_variant = possible_attr[0]
 
         if isinstance(attribute, types.MethodType):
@@ -164,23 +179,17 @@ class IncrementalImprover(FuzzingAspect):
         '''
         return self.variants[-1]
 
+    @property
+    def round_length(self):
+        return self.iterations_per_variant * self.variants_per_round
+
     def nth_best_attribute_in_current_round(self, n):
         '''
         The attribute variant in the current round which seems to perform best
         :return: A tuple of the format (variant function, summed success metrics) which has the highest average
             of success metrics for the current round
         '''
-        current_round = copy.deepcopy(self.current_round)
-        for variant, results in current_round.items():
-            if len(results) != 0:
-                current_round[variant] = sum([self.success_metric(result) for result in results]) / len(results)
-            else:
-                # If something's not run yet, assume nothing.
-                current_round[variant] = 0
-
-        result_list = current_round.items()
-        result_list.sort(key=lambda x: x[1])
-        return result_list[-n]
+        return self.variants_ordered_by_success[-1][n-1]
 
     @property
     def best_attribute_in_current_round(self):
@@ -191,12 +200,26 @@ class IncrementalImprover(FuzzingAspect):
         '''
         return self.nth_best_attribute_in_current_round(1)
 
+    def rank_previous_variants(self):
+        current_round = copy.deepcopy(self.current_round)
+        for variant, results in current_round.items():
+            if len(results) != 0:
+                current_round[variant] = sum([self.success_metric(result) for result in results]) / len(results)
+            else:
+                # If something's not run yet, assume nothing.
+                current_round[variant] = 0
+
+        result_list = current_round.items()
+        result_list.sort(key=lambda x: -x[1])
+        self.variants_ordered_by_success.append(result_list)
+
     def construct_new_round(self, attribute, context):
         '''
         Constructs a new round of variants.
         :param attribute: The variant to base the next round of variants on.
         :param context: The context passed to the fuzzer
         '''
+
         current_round = {}
 
         # Iterate through a new round, and construct new variants to go in it.

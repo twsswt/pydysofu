@@ -1,6 +1,15 @@
 import unittest
 from pydysofu.fuzz_weaver import IncrementalImprover, fuzz_clazz
-from pydysofu.core_fuzzers import repeat_random_step
+from pydysofu.core_fuzzers import repeat_random_step, shuffle_steps
+from pydysofu.GeneticImprover import GeneticImprover
+
+
+def shuffle_then_repeat_random_step(steps, context):
+    steps_without_return = steps[:-1]
+    shuffled_steps = shuffle_steps(steps_without_return, context)
+    shuffled_steps_with_repeat = repeat_random_step(shuffled_steps, context)
+    shuffled_steps_with_repeat.append(steps[-1])
+    return shuffled_steps_with_repeat
 
 
 class Maze(object):
@@ -55,15 +64,15 @@ class Maze(object):
 
 
 class IncrementalImproverTest(unittest.TestCase):
-    def test_improves_behaviour(self):
+    def test_improves_behaviour_with_incremental_variants(self):
         # Some control variables
-        round_length = 10
+        iterations_per_variant = 10
         variants_per_round=6
         number_of_rounds = 8
         def success_metric(x):
             return x
 
-        incremental_improver = IncrementalImprover(round_length=round_length,
+        incremental_improver = IncrementalImprover(iterations_per_variant=iterations_per_variant,
                                                    variants_per_round=variants_per_round,
                                                    success_metric_function=success_metric)
         # ==== CONTROL: what happens if we change nothing?
@@ -77,7 +86,7 @@ class IncrementalImproverTest(unittest.TestCase):
             initial_moves_remaining = maze.moves_remaining()
             best_remaining = maze.moves_remaining()
             for _ in range(2):
-                for j in range(variants_per_round * round_length):
+                for j in range(variants_per_round * iterations_per_variant):
                     maze.move()
 
                     if maze.moves_remaining() < best_remaining:
@@ -102,7 +111,7 @@ class IncrementalImproverTest(unittest.TestCase):
             initial_moves_remaining = maze.moves_remaining()
             best_remaining = maze.moves_remaining()
             for _ in range(2):
-                for j in range(variants_per_round * round_length):
+                for j in range(variants_per_round * iterations_per_variant):
                     maze.move()
 
                     if maze.moves_remaining() < best_remaining:
@@ -116,4 +125,67 @@ class IncrementalImproverTest(unittest.TestCase):
         # After four rounds (240 = 4 * 60) of incremental improvement, we'd expect the solution to be better than the
         # standard moveset, which is a no-op. For this not to happen we'd need to randomly generate 24 (24 = 6 * 4)
         # variants which were all moving in the /wrong/ direction!)
+
+
+class TestGeneticImprover(unittest.TestCase):
+    def test_improves_behaviour_with_genetic_programming(self):
+        # Some control variables
+        iterations_per_variant = 10
+        variants_per_round=6
+        number_of_rounds = 8
+        def success_metric(x):
+            return x
+
+        genetic_improver = GeneticImprover(iterations_per_variant=iterations_per_variant,
+                                           variants_per_round=variants_per_round,
+                                           success_metric_function=success_metric)
+        # ==== CONTROL: what happens if we change nothing?
+
+        # Get the initial number of moves remaining after movement.
+        maze = Maze()
+        maze.reset_position()
         maze.move()
+
+        for i in range(number_of_rounds / 2):
+            initial_moves_remaining = maze.moves_remaining()
+            best_remaining = maze.moves_remaining()
+            for _ in range(2):
+                for j in range(variants_per_round * iterations_per_variant):
+                    maze.move()
+
+                    if maze.moves_remaining() < best_remaining:
+                        best_remaining = maze.moves_remaining()
+
+                    maze.reset_position()
+
+            # Every two rounds, we should see no improvement - UNLESS we're fuzzing.
+            self.assertEqual(initial_moves_remaining, best_remaining)
+
+        # ==== Experiment: applying fuzzing improves our behaviour.
+        fuzz_clazz(Maze,
+                   {Maze.move: shuffle_then_repeat_random_step},
+                   advice_aspect=genetic_improver)
+
+        # Get the initial number of moves remaining after movement.
+        maze = Maze()
+        maze.reset_position()
+        maze.move()
+
+        for i in range(number_of_rounds / 2):
+            initial_moves_remaining = maze.moves_remaining()
+            best_remaining = maze.moves_remaining()
+            for _ in range(2):
+                for j in range(variants_per_round * iterations_per_variant):
+                    maze.move()
+
+                    if maze.moves_remaining() < best_remaining:
+                        best_remaining = maze.moves_remaining()
+
+                    maze.reset_position()
+
+            # Every two rounds, we should see no improvement - UNLESS we're fuzzing.
+            self.assertGreater(initial_moves_remaining, best_remaining)
+
+        # After four rounds (240 = 4 * 60) of incremental improvement, we'd expect the solution to be better than the
+        # standard moveset, which is a no-op. For this not to happen we'd need to randomly generate 24 (24 = 6 * 4)
+        # variants which were all moving in the /wrong/ direction!)
