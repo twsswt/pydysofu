@@ -28,12 +28,12 @@ def copy_func(f):
     fn.__dict__.update(f.__dict__)
     return fn
 
+
 def previously_fuzzed_method(func):
     if not inspect.ismethod(func):
         return False
 
     return "_mod" in str(func.im_func.func_code)
-
 
 
 def get_reference_syntax_tree(func):
@@ -76,13 +76,18 @@ def fuzz_function(reference_function, fuzzer=identity, context=None):
     return function_clone  # So it can be caught in the HabitFormingAspect
 
 
-class FuzzingAspect(IdentityAspect):
+class AdvisableFuzzer(object):
+
+    def give_advice(self, fuzzing_advice):
+        if not hasattr(self, "fuzzing_advice"):
+            self.fuzzing_advice = {}
+        self.fuzzing_advice.update(fuzzing_advice)
+
+
+class FuzzingAspect(IdentityAspect, AdvisableFuzzer):
 
     def __init__(self, fuzzing_advice={}):
         self.fuzzing_advice = fuzzing_advice
-
-    def give_advice(self, fuzzing_advice):
-        self.fuzzing_advice.update(fuzzing_advice)
 
     def prelude(self, attribute, context, *args, **kwargs):
         self.apply_fuzzing(attribute, context)
@@ -100,13 +105,13 @@ class FuzzingAspect(IdentityAspect):
         fuzz_function(reference_function, fuzzer, context)
 
 
-class IncrementalImprover(FuzzingAspect):
+class IncrementalImprover(IdentityAspect, AdvisableFuzzer):
     '''
     A fuzzer aspect class which improves on old variants, effectively forming habits.
     '''
-    def __init__(self, variants_per_round, iterations_per_variant, success_metric_function, fuzzer=lambda x: x, fuzzing_advice={}):
+    def __init__(self, variants_per_round, iterations_per_variant, success_metric_function, fuzzing_advice={}):
 
-        super(IncrementalImprover, self).__init__(fuzzing_advice)
+        super(IncrementalImprover, self).__init__()
 
         self.variants_per_round = variants_per_round
         self.iterations_per_variant = iterations_per_variant
@@ -116,6 +121,7 @@ class IncrementalImprover(FuzzingAspect):
         self.success_metric = success_metric_function
         self.advice_key_map = {}
         self.variants_ordered_by_success = []
+        self.fuzzing_advice = fuzzing_advice
 
         '''
         A list containing a dictionary for each round. Each round's dictionary is of format {variant: [results]}.
@@ -135,21 +141,8 @@ class IncrementalImprover(FuzzingAspect):
         # ===== PRELUDE SECTION
 
         # Checks to see whether we need to make a new round, or if it's the first time we've run, for book-keeping
-        if self.reference_attribute is None:
-            self.reference_attribute = attribute
+        if self.invocation_count == 0:
             self.construct_new_round(attribute, context)
-
-        elif self.invocation_count != 0 \
-                and self.invocation_count % (self.variants_per_round * self.iterations_per_variant) == 0:
-
-            # Only rank conditionally, because if we've called IncrementalImprover.rank_previous_variants manually or if
-            # we've looked for the best attribute in the round that just finished, this has already been run!
-            if len(self.current_round.items()) is not 0:
-                self.rank_previous_variants()
-
-            self.construct_new_round(self.best_attribute_in_last_round[0], context)
-
-        self.invocation_count += 1
 
         # Select a new current variant from the round.
         current_variant = None
@@ -176,6 +169,15 @@ class IncrementalImprover(FuzzingAspect):
         current_round[current_variant] = result_list
         self.variants[-1] = current_round
 
+        self.invocation_count += 1
+
+        # If we need a new current round now that this variant has been run, make one.
+        if self.invocation_count % (self.variants_per_round * self.iterations_per_variant) == 0:
+
+            self.rank_previous_variants()
+            self.construct_new_round(self.best_attribute_in_last_round[0], context)
+
+
     @property
     def current_round(self):
         '''
@@ -195,10 +197,6 @@ class IncrementalImprover(FuzzingAspect):
             of success metrics for the current round
         '''
 
-        # If we just finished a round, make *that* the last round, and begin a new one.
-        if self.invocation_count % (self.variants_per_round * self.iterations_per_variant) == 0:
-            self.rank_previous_variants()
-
         if len(self.variants_ordered_by_success) != 0:
             return self.variants_ordered_by_success[-1][n-1]
 
@@ -217,12 +215,21 @@ class IncrementalImprover(FuzzingAspect):
             if len(results) != 0:
                 current_round[variant] = sum([self.success_metric(result) for result in results]) / len(results)
             else:
-                # If something's not run yet, assume nothing.
-                current_round[variant] = 0
+                # If something's not run yet, we've made a mistake.
+                raise Exception("Ranked a round with un-evaluated variants")
 
         result_list = current_round.items()
-        result_list.sort(key=lambda x: -x[1])
+        result_list.sort(key=self.sort_key)
         self.variants_ordered_by_success.append(result_list)
+
+    def sort_key(self, x):
+        '''
+        The key function that's used to order variants by success in self.rank_previous_variants
+        By default this woll sort fox the *maximum* average success metric
+        :param x:
+        :return:
+        '''
+        return -x[1]
 
     def construct_new_round(self, attribute, context):
         '''

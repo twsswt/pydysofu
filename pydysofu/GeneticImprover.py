@@ -19,7 +19,7 @@ def choose_new_ranks(variant_1_rank, variant_2_rank, already_spliced):
 class GeneticImprover(IncrementalImprover):
 
     def __init__(self, variants_per_round, iterations_per_variant, success_metric_function, fuzzer=lambda x: x, fuzzing_advice={}):
-        super(GeneticImprover, self).__init__(variants_per_round, iterations_per_variant, success_metric_function, fuzzer, fuzzing_advice)
+        super(GeneticImprover, self).__init__(variants_per_round, iterations_per_variant, success_metric_function, fuzzing_advice)
 
     @property
     def variants_to_splice(self):
@@ -46,9 +46,14 @@ class GeneticImprover(IncrementalImprover):
 
         # Iterate through a new round, and construct new variants to go in it.
         # If this is our *first* variant, add the unaltered target; sometimes original is best!
+        # If not, add the best variant from the previous round.
         for i in range(self.variants_per_round):
-            if i == 0 and self.invocation_count == 0:
-                current_round[attribute] = []
+            if i is 0:
+                if self.invocation_count is 0:
+                    current_round[attribute] = []
+                else:
+                    current_round[self.best_attribute_in_last_round[0]] = []
+                    print(self.best_attribute_in_last_round[1])
 
             # We're not adding the unaltered target, so generate and add a variant.
             else:

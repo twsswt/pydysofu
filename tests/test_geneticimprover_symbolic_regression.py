@@ -5,8 +5,6 @@ from math import sin, cos, exp, log
 import inspect
 import copy
 
-seed = 0
-
 
 def mutate_for_symbolic_regression(steps, context):
     # Catch the recursive application to the inner function definition
@@ -18,10 +16,17 @@ def mutate_for_symbolic_regression(steps, context):
         steps[1].body[8].name = steps[1].body[8].name[:-4]
 
     # The actual incremental improvement, up to 10 times.
-    for i in range(random.randint(0, 10)):
-        steps[1].body[9].value.elts.append(random.choice(steps[1].body[:7]).value)
+    steps[1].body[9].value.elts.append(random.choice(steps[1].body[:7]).value)
 
     return steps
+
+
+def fitness_generator(function_to_fit):
+    def success_metric(result):
+        def distance_from_expected(acc, res):
+            return acc + abs(function_to_fit(res[0])-res[1])
+        return reduce(distance_from_expected, result, 0)
+    return success_metric
 
 
 def get_arity(func):
@@ -30,7 +35,6 @@ def get_arity(func):
 
 class SymbolicRegresser(object):
     def __init__(self):
-        random.seed(seed)
         self.points_for_regression = [random.random()*random.choice([1, -1]) for _ in range(20)]
 
     def improving_func(self):
@@ -66,14 +70,6 @@ class SymbolicRegresser(object):
         return results
 
 
-def fitness_generator(function_to_fit):
-    def success_metric(result):
-        def distance_from_expected(acc, res):
-            return acc + abs(function_to_fit(res[0])-res[1])
-        return reduce(distance_from_expected, result, 0)
-    return success_metric
-
-
 class GeneticProgrammingSymbolicRegresser(GeneticImprover):
     def splice(self, variant_1_tree, variant_2_tree):
         function_list_1 = variant_1_tree.body[0].body[1].body[9].value.elts
@@ -86,6 +82,8 @@ class GeneticProgrammingSymbolicRegresser(GeneticImprover):
 
         return new_tree
 
+    def sort_key(self, x): x
+
 
 class TestGeneticProgramming(unittest.TestCase):
     '''
@@ -95,31 +93,33 @@ class TestGeneticProgramming(unittest.TestCase):
     '''
 
     def run_regression_against(self, func_to_fit):
-        random.seed(0)
+        for seed in range(0, 5000, 250):
+            random.seed(seed)
 
-        variants_per_round = 10
-        iterations_per_variant = 1
-        number_of_rounds = 4
-        fitness = fitness_generator(func_to_fit)
+            variants_per_round = 10
+            iterations_per_variant = 1
+            number_of_rounds = 4
+            fitness = fitness_generator(func_to_fit)
 
-        improver = GeneticProgrammingSymbolicRegresser(variants_per_round=variants_per_round,
-                                                       iterations_per_variant=iterations_per_variant,
-                                                       success_metric_function=fitness
-                                                       )
+            improver = GeneticProgrammingSymbolicRegresser(variants_per_round=variants_per_round,
+                                                           iterations_per_variant=iterations_per_variant,
+                                                           success_metric_function=fitness
+                                                           )
 
-        fuzz_clazz(SymbolicRegresser,
-                   fuzzing_advice={SymbolicRegresser.improving_func: mutate_for_symbolic_regression},
-                   advice_aspect=improver)
+            fuzz_clazz(SymbolicRegresser,
+                       fuzzing_advice={SymbolicRegresser.improving_func: mutate_for_symbolic_regression},
+                       advice_aspect=improver)
 
-        improving_func = SymbolicRegresser().improving_func
+            improving_func = SymbolicRegresser().improving_func
 
-        fitnesses = []
-        for i in range(number_of_rounds):
-            for j in range(variants_per_round):
-                improving_func()
-            fitnesses.append(improver.best_attribute_in_last_round[1])
+            for i in range(number_of_rounds):
+                for j in range(variants_per_round):
+                    improving_func()
 
-        [self.assertLess(fitnesses[i+1], fitnesses[i]) for i in range(number_of_rounds-1)]  # TODO: Actually run the regression, and show that we get closer as we mutate!
+            for i in range(number_of_rounds-1):
+                average_distance_from_func = improver.variants_ordered_by_success[i+1][0][1]
+                previous_distance_from_func = improver.variants_ordered_by_success[i][0][1]
+                self.assertLessEqual(average_distance_from_func, previous_distance_from_func)
 
     def test_solves_symbolic_regression_koza_1(self):
 
