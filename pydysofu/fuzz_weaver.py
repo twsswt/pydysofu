@@ -70,8 +70,8 @@ def fuzz_function(reference_function, fuzzer=identity, context=None):
     # reference function's code object for this call.
     compiled_module = compile(fuzzed_syntax_tree, '<potentially custom>', 'exec')
 
-    reference_function.func_code = compiled_module.co_consts[0]
     function_clone = copy_func(reference_function)
+    function_clone.func_code = compiled_module.co_consts[0]
     record_generated_syntax_tree(function_clone, fuzzed_syntax_tree)
     return function_clone  # So it can be caught in the HabitFormingAspect
 

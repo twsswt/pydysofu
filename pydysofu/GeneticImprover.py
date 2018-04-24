@@ -18,8 +18,11 @@ def choose_new_ranks(variant_1_rank, variant_2_rank, already_spliced):
 
 class GeneticImprover(IncrementalImprover):
 
-    def __init__(self, variants_per_round, iterations_per_variant, success_metric_function, fuzzer=lambda x: x, fuzzing_advice={}):
-        super(GeneticImprover, self).__init__(variants_per_round, iterations_per_variant, success_metric_function, fuzzing_advice)
+    def __init__(self, variants_per_round, iterations_per_variant, success_metric_function, fuzzing_advice={}):
+        super(GeneticImprover, self).__init__(variants_per_round,
+                                              iterations_per_variant,
+                                              success_metric_function,
+                                              fuzzing_advice)
 
     @property
     def variants_to_splice(self):
@@ -52,7 +55,16 @@ class GeneticImprover(IncrementalImprover):
                 if self.invocation_count is 0:
                     current_round[attribute] = []
                 else:
-                    current_round[self.best_attribute_in_last_round[0]] = []
+                    best_attr = self.best_attribute_in_last_round[0]
+                    best_attr_copy = copy_func(best_attr)
+
+                    new_advice = {best_attr_copy: self.fuzzing_advice.get(best_attr, identity)}
+                    self.give_advice(new_advice)
+                    current_round[best_attr] = []
+
+                    relevant_syntax_tree = get_reference_syntax_tree(best_attr)
+                    record_generated_syntax_tree(best_attr_copy, relevant_syntax_tree)
+
                     print(self.best_attribute_in_last_round[1])
 
             # We're not adding the unaltered target, so generate and add a variant.
@@ -61,15 +73,17 @@ class GeneticImprover(IncrementalImprover):
                 # What kind of variant do we need to add?
                 # If we have a history of past mutants, make by splicing previous ones.
                 # Add some fuzzed variants either way.
-                if len(self.variants) != 0 and i < self.variants_to_splice:
+                if len(self.variants) != 0 and i < self.variants_to_splice and False: # TODO: remove debug `False`!!!!!!!!!!!!!!!!!!!!!!!!!
 
                     # Splice two previous variants to make a new one.
                     variant_function_1 = self.nth_best_attribute_in_last_round(variant_1_to_splice)[0]
                     variant_function_2 = self.nth_best_attribute_in_last_round(variant_2_to_splice)[0]
-                    variant_1_tree, variant_2_tree = get_reference_syntax_tree(variant_function_1), \
-                                                     get_reference_syntax_tree(variant_function_2)
+                    variant_1_tree = get_reference_syntax_tree(variant_function_1)
+                    variant_2_tree = get_reference_syntax_tree(variant_function_2)
 
-                    new_variant_tree = self.splice(variant_1_tree, variant_2_tree)
+                    new_variant_tree = deepcopy(variant_1_tree)
+                    new_variant_tree.body[0].body = self.splice(variant_1_tree.body[0].body,
+                                                                variant_2_tree.body[0].body)
                     variant_code = compile(new_variant_tree, '<spliced tree>', 'exec')
 
                     # A shell we'll inject new code into
@@ -85,6 +99,9 @@ class GeneticImprover(IncrementalImprover):
                     # Shouldn't make a difference as they should all have used the same fuzzer, as of the current
                     # implementation.
                     fuzzer = self.fuzzing_advice.get(variant_function_1)
+                    if inspect.ismethod(variant_function_1):
+                        fuzzer = getattr(variant_function_1.im_class, variant_function_1.func_name)
+
                     self.give_advice({variant: fuzzer})
 
                     # We might need new variants to generate a splice from next time, rather than constantly
@@ -107,22 +124,16 @@ class GeneticImprover(IncrementalImprover):
 
                     fuzzer = self.fuzzing_advice.get(advice_key, identity)
                     variant = fuzz_function(reference_function, fuzzer, context)
+                    get_reference_syntax_tree(variant)
                     self.give_advice({variant: fuzzer})
                     current_round[variant] = []
 
-
         self.variants.append(current_round)
 
-    def splice(self, variant_1_tree, variant_2_tree):
-
-        new_tree = deepcopy(variant_1_tree)
-        v1_steps = variant_1_tree.body[0].body
-        v2_steps = variant_2_tree.body[0].body
+    def splice(self, variant_1_steps, variant_2_steps):
 
         # Don't choose a point to splice that's longer than one tree
-        splice_point_1 = randint(0, len(v1_steps))
-        splice_point_2 = randint(0, len(v2_steps)-1)
+        splice_point_1 = randint(0, len(variant_1_steps))
+        splice_point_2 = randint(0, len(variant_2_steps) - 1)
 
-        new_variant_steps = v1_steps[:splice_point_1] + v2_steps[splice_point_2:]
-        new_tree.body[0].body = new_variant_steps
-        return new_tree
+        return variant_1_steps[:splice_point_1] + variant_2_steps[splice_point_2:]
