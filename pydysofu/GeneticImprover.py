@@ -65,8 +65,6 @@ class GeneticImprover(IncrementalImprover):
                     relevant_syntax_tree = get_reference_syntax_tree(best_attr)
                     record_generated_syntax_tree(best_attr_copy, relevant_syntax_tree)
 
-                    print(self.best_attribute_in_last_round[1])
-
             # We're not adding the unaltered target, so generate and add a variant.
             else:
 

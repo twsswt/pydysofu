@@ -123,10 +123,8 @@ class SymbolicRegression(object):
         a = self.pop_next_in_stack(datapoint)
         def checked_log(n):
             n = abs(n)
-            if n is 0:
+            if n == 0:
                 return 0
-            if n > 1:
-                return log(1)
             return log(n)
 
         self.add_to_stack(datapoint, checked_log(a))
@@ -152,11 +150,12 @@ class RegressionImprover(GeneticImprover):
 class TestStateBasedSymbolicRegression(unittest.TestCase):
     def run_regression_against(self, func_to_fit):
         for seed in range(0, 5000, 250):
+            print("================")
             random.seed(seed)
 
-            variants_per_round = 3
-            iterations_per_variant = 1
-            number_of_rounds = 4
+            variants_per_round = 10
+            iterations_per_variant = 2
+            number_of_rounds = 10
             number_of_points = 20
 
             datapoints = [random.random()*random.choice([-1, 1]) for _ in range(number_of_points)]
@@ -176,10 +175,11 @@ class TestStateBasedSymbolicRegression(unittest.TestCase):
                 for j in range(variants_per_round):
                     regresser.perform_regression()
 
-            for i in range(number_of_rounds-1):
-                average_distance_from_func = improver.variants_ordered_by_success[i+1][0][1]
-                previous_distance_from_func = improver.variants_ordered_by_success[i][0][1]
-                self.assertLessEqual(average_distance_from_func, previous_distance_from_func)
+                print improver.best_attribute_in_last_round
+
+            distance_from_func_at_beginning = improver.variants_ordered_by_success[0][0][1]
+            distance_from_func_at_end = improver.variants_ordered_by_success[-1][0][1]
+            self.assertLessEqual(distance_from_func_at_end, distance_from_func_at_beginning)
 
     def test_solves_symbolic_regression_koza_1(self):
 

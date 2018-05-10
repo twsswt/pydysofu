@@ -32,14 +32,12 @@ def fitness_generator(function_to_fit):
 def get_arity(func):
     return len(inspect.getargspec(func)[0])
 
+points_for_regression = [random.random()*random.choice([1, -1]) for _ in range(20)]
 
 class SymbolicRegresser(object):
-    def __init__(self):
-        self.points_for_regression = [random.random()*random.choice([1, -1]) for _ in range(20)]
-
     def improving_func(self):
         results = []
-        for i in self.points_for_regression:
+        for i in points_for_regression:
 
             # begin symbols
             lambda x, y: x + y
@@ -82,7 +80,8 @@ class GeneticProgrammingSymbolicRegresser(GeneticImprover):
 
         return new_tree
 
-    def sort_key(self, x): x
+    def sort_key(self, x):
+        return x[1]
 
 
 class TestGeneticProgramming(unittest.TestCase):
@@ -98,7 +97,7 @@ class TestGeneticProgramming(unittest.TestCase):
 
             variants_per_round = 10
             iterations_per_variant = 1
-            number_of_rounds = 4
+            number_of_rounds = 7
             fitness = fitness_generator(func_to_fit)
 
             improver = GeneticProgrammingSymbolicRegresser(variants_per_round=variants_per_round,
