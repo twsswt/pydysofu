@@ -17,7 +17,7 @@ class fuzz(object):
     enable_fuzzings is by default set to False, but can be set to false to globally disable fuzzing.
     """
 
-    enable_fuzzings = False
+    enable_fuzzings = True
 
     def __init__(self, fuzzer=identity):
         self.fuzzer = fuzzer
