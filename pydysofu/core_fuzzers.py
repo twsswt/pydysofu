@@ -18,6 +18,7 @@ from threading import Lock
 import copy
 
 import inspect
+import random
 
 from .find_lambda import find_lambda_ast
 from .config import pydysofu_random
@@ -516,6 +517,17 @@ def remove_last_step(steps, context):
 def remove_random_step(steps, context):
     fuzzer = filter_steps(choose_random_steps(1), replace_steps_with_pass)
     return fuzzer(steps, context)
+
+
+def repeat_random_step(steps, _):
+
+    non_duplicate_steps = []
+    for step in steps:
+        if step not in non_duplicate_steps:
+
+            non_duplicate_steps.append(step)
+    steps.insert(-1, random.choice(non_duplicate_steps))
+    return steps
 
 
 def duplicate_last_step(steps, context):
