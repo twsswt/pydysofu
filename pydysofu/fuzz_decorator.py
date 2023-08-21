@@ -3,9 +3,9 @@
 @author twsswt
 """
 
-from core_fuzzers import identity
+from .core_fuzzers import identity
 
-from fuzz_weaver import fuzz_function
+from .fuzz_weaver import fuzz_function
 
 
 # noinspection PyPep8Naming

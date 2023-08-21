@@ -125,7 +125,7 @@ def choose_last_step(steps):
     return func(steps)
 
 
-_ast_control_structure_types = {ast.For, ast.If, ast.TryExcept, ast.While, ast.Return, ast.FunctionDef}
+_ast_control_structure_types = {ast.For, ast.If, ast.Try, ast.While, ast.Return, ast.FunctionDef}
 
 
 def exclude_control_structures(target=_ast_control_structure_types):
@@ -295,12 +295,12 @@ def on_condition_that(condition, fuzzer):
 
 def recurse_into_nested_steps(
         fuzzer=identity,
-        target_structures={ast.For, ast.TryExcept, ast.While, ast.If},
+        target_structures={ast.For, ast.Try, ast.While, ast.If},
         min_depth=0,
         max_depth=2 ** 32):
     """
     A composite fuzzer that applies the supplied fuzzer recursively to bodies of control statements (For, While,
-    TryExcept and If).  Recursion is applied at the head, i.e. the fuzzer supplied is applied to the parent block last.
+    Try and If).  Recursion is applied at the head, i.e. the fuzzer supplied is applied to the parent block last.
     """
 
     def _recurse_into_nested_steps(steps, context, depth=0):
@@ -311,7 +311,7 @@ def recurse_into_nested_steps(
                 elif type(step) in {ast.If} & target_structures:
                     step.body = _recurse_into_nested_steps(step.body, context, depth + 1)
                     step.orelse = _recurse_into_nested_steps(step.orelse, context, depth + 1)
-                elif type(step) in {ast.TryExcept} & target_structures:
+                elif type(step) in {ast.Try} & target_structures:
                     step.body = _recurse_into_nested_steps(step.body, context, depth + 1)
                     for handler in step.handlers:
                         _recurse_into_nested_steps(handler.body, context, depth + 1)

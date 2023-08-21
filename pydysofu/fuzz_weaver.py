@@ -6,9 +6,9 @@ import ast
 import copy
 import inspect
 
-from core_fuzzers import identity
+from .core_fuzzers import identity
 
-from workflow_transformer import WorkflowTransformer
+from .workflow_transformer import WorkflowTransformer
 
 from asp import weave_clazz, weave_module, unweave_class, unweave_all_classes, IdentityAspect
 
@@ -54,8 +54,8 @@ class FuzzingAspect(IdentityAspect):
     def apply_fuzzing(self, attribute, context):
         # Ensure that advice key is unbound method for instance methods.
         if inspect.ismethod(attribute):
-            reference_function = attribute.im_func
-            advice_key = getattr(attribute.im_class, attribute.func_name)
+            reference_function = attribute.__func__
+            advice_key = getattr(attribute.__self__.__class__, attribute.__func__.__name__)
         else:
             reference_function = attribute
             advice_key = reference_function
