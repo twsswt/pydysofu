@@ -35,12 +35,11 @@ def fuzz_function(reference_function, fuzzer=identity, context=None):
     fuzzed_syntax_tree = copy.deepcopy(reference_syntax_tree)
     workflow_transformer = WorkflowTransformer(fuzzer=fuzzer, context=context)
     workflow_transformer.visit(fuzzed_syntax_tree)
-
     # Compile the newly mutated function into a module, extract the mutated function code object and replace the
     # reference function's code object for this call.
     compiled_module = compile(fuzzed_syntax_tree, inspect.getsourcefile(reference_function), 'exec')
 
-    reference_function.func_code = compiled_module.co_consts[0]
+    reference_function.__code__ = compiled_module.co_consts[0]
 
 
 class FuzzingAspect(IdentityAspect):

@@ -88,7 +88,7 @@ def choose_last_steps(n, reapply=True):
             self.n = _n
             self.reapply = _reapply
 
-        def __call__(self, steps):
+        def __call__(self, steps, context):
 
             selected = list()
 
